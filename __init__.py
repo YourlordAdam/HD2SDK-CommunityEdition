@@ -94,6 +94,11 @@ TextureTypeLookup = {
         "Base Color", 
         "Normal"
     ),
+    "basic+": (
+        "PBR",
+        "Base Color",
+        "Normal"
+    ),
     "emissive": (
         "Normal/AO/Roughness", 
         "Emission", 
@@ -1460,6 +1465,7 @@ def CreateAddonMaterial(ID, StingrayMat, mat, Entry):
     bpy.ops.file.unpack_all(method='REMOVE')
     
     if Entry.MaterialTemplate == "basic": SetupBasicBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separateColor, normalMap)
+    elif Entry.MaterialTemplate == "basic+": SetupBasicBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separateColor, normalMap)
     elif Entry.MaterialTemplate == "original": SetupOriginalBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separateColor, normalMap)
     elif Entry.MaterialTemplate == "emissive": SetupEmissiveBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separateColor, normalMap)
     
@@ -3894,9 +3900,10 @@ class AddMaterialOperator(Operator):
     bl_description = "Adds a New Material to Current Active Patch"
 
     materials = (
-        ("original", "Original", "The original template used for all mods uploaded to Nexus prior to the addon's public release, which is bloated with additional unnecessary textures. Sourced from a terminid."),
-        ("basic", "Basic", "A basic material with a color, normal, and PBR map. Sourced from a trash bag prop."),
-        ("emissive", "Emissive", "A basic material with a color, normal, and emission map. Sourced from a vending machine."),
+        ("basic+", "Basic+", "A basic material with a color, normal, and PBR map which renders in the UI, Sourced from the super credits prop"),
+        ("original", "Original", "The original template used for all mods uploaded to Nexus prior to the addon's public release, which is bloated with additional unnecessary textures. Sourced from a terminid"),
+        ("basic", "Basic", "A basic material with a color, normal, and PBR map. Sourced from a trash bag prop"),
+        ("emissive", "Emissive", "A basic material with a color, normal, and emission map. Sourced from a vending machine"),
     )
 
     selected_material: EnumProperty(items=materials, name="Template", default=0)
