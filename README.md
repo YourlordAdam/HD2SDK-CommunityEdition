@@ -1,3 +1,6 @@
+# This is an edit of the 1.9.1 version of the tool with the Basic+ material added to the material template list.
+
+
 # Helldivers 2 SDK: Community Edition
 A Blender addon facilitating the modding of textures, meshes and materials contained within Helldivers 2 archives.
 
