@@ -103,6 +103,11 @@ TextureTypeLookup = {
         "Normal/AO/Roughness", 
         "Emission", 
         "Base Color/Metallic"
+    ),
+    "alphaclip": (
+        "Normal/AO/Roughness",
+        "Alpha Mask",
+        "Base Color/Metallic"
     )
 }
 
@@ -1468,6 +1473,7 @@ def CreateAddonMaterial(ID, StingrayMat, mat, Entry):
     elif Entry.MaterialTemplate == "basic+": SetupBasicBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separateColor, normalMap)
     elif Entry.MaterialTemplate == "original": SetupOriginalBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separateColor, normalMap)
     elif Entry.MaterialTemplate == "emissive": SetupEmissiveBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separateColor, normalMap)
+    elif Entry.MaterialTemplate == "alphaclip": SetupAlphaClipBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separateColor, normalMap, mat)
     
 def SetupBasicBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separateColor, normalMap):
     bsdf.inputs['Emission Strength'].default_value = 0
@@ -1494,6 +1500,23 @@ def SetupEmissiveBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separate
     nodeTree.links.new(inputNode.outputs['Emission'], bsdf.inputs['Emission Color'])
     nodeTree.links.new(inputNode.outputs['Normal/AO/Roughness'], separateColor.inputs['Color'])
     nodeTree.links.new(separateColor.outputs['Red'], normalMap.inputs['Color'])
+    nodeTree.links.new(normalMap.outputs['Normal'], bsdf.inputs['Normal'])
+    nodeTree.links.new(bsdf.outputs['BSDF'], outputNode.inputs['Surface'])
+
+def SetupAlphaClipBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separateColor, normalMap, mat):
+    bsdf.inputs['Emission Strength'].default_value = 0
+    combineColor = nodeTree.nodes.new('ShaderNodeCombineColor')
+    combineColor.inputs['Blue'].default_value = 1
+    combineColor.location = (-350, -150)
+    separateColor.location = (-550, -150)
+    inputNode.location = (-750, 0)
+    mat.blend_method = 'CLIP'
+    nodeTree.links.new(inputNode.outputs['Base Color/Metallic'], bsdf.inputs['Base Color'])
+    nodeTree.links.new(inputNode.outputs['Alpha Mask'], bsdf.inputs['Alpha'])
+    nodeTree.links.new(inputNode.outputs['Normal/AO/Roughness'], separateColor.inputs['Color'])
+    nodeTree.links.new(separateColor.outputs['Red'], combineColor.inputs['Red'])
+    nodeTree.links.new(separateColor.outputs['Green'], combineColor.inputs['Green'])
+    nodeTree.links.new(combineColor.outputs['Color'], normalMap.inputs['Color'])
     nodeTree.links.new(normalMap.outputs['Normal'], bsdf.inputs['Normal'])
     nodeTree.links.new(bsdf.outputs['BSDF'], outputNode.inputs['Surface'])
 
@@ -3901,6 +3924,7 @@ class AddMaterialOperator(Operator):
 
     materials = (
         ("basic+", "Basic+", "A basic material with a color, normal, and PBR map which renders in the UI, Sourced from the super credits prop"),
+        ("alphaclip", "Alpha Clip", "A material that supports an alpha mask which does not render in the UI. Sourced from a skeleton pile"),
         ("original", "Original", "The original template used for all mods uploaded to Nexus prior to the addon's public release, which is bloated with additional unnecessary textures. Sourced from a terminid"),
         ("basic", "Basic", "A basic material with a color, normal, and PBR map. Sourced from a trash bag prop"),
         ("emissive", "Emissive", "A basic material with a color, normal, and emission map. Sourced from a vending machine"),
