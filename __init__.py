@@ -3473,25 +3473,34 @@ class ImportDumpOperator(Operator, ImportHelper):
         if Global_TocManager.ActivePatch == None:
             raise Exception("No patch exists, please create one first")
 
-        FileID = int(self.object_id.split(',')[0])
-        Entry = Global_TocManager.GetEntry(FileID, MaterialID)
-        if Entry != None:
-            if not Entry.IsLoaded: Entry.Load(False, False)
-            path = self.filepath
-            with open(path, 'r+b') as f:
-                Entry.TocData = f.read()
-            if os.path.isfile(f"{path}.gpu_resources"):
-                with open(f"{path}.gpu_resources", 'r+b') as f:
-                    Entry.GpuData = f.read()
-            else:
-                Entry.GpuData = b""
-            if os.path.isfile(f"{path}.stream"):
-                with open(f"{path}.stream", 'r+b') as f:
-                    Entry.StreamData = f.read()
-            else:
-                Entry.StreamData = b""
-            Entry.IsModified = True
-            Global_TocManager.AddEntryToPatch(Entry.FileID, Entry.TypeID)
+        Entries = EntriesFromStrings(self.object_id, self.object_typeid)
+        for Entry in Entries:
+            if Entry != None:
+                if not Entry.IsLoaded: Entry.Load(False, False)
+                path = self.filepath
+                GpuResourchesPath = f"{path}.gpu"
+                StreamPath = f"{path}.stream"
+
+                with open(path, 'r+b') as f:
+                    Entry.TocData = f.read()
+
+                if os.path.isfile(GpuResourchesPath):
+                    with open(GpuResourchesPath, 'r+b') as f:
+                        Entry.GpuData = f.read()
+                else:
+                    Entry.GpuData = b""
+
+                if os.path.isfile(StreamPath):
+                    with open(StreamPath, 'r+b') as f:
+                        Entry.StreamData = f.read()
+                else:
+                    Entry.StreamData = b""
+
+                Entry.IsModified = True
+                if not Global_TocManager.IsInPatch(Entry):
+                    Global_TocManager.AddEntryToPatch(Entry.FileID, Entry.TypeID)
+                    
+                self.report({'INFO'}, f"Imported Raw Dump: {path}")
         return{'FINISHED'}
 
 #endregion
@@ -4785,13 +4794,18 @@ class WM_MT_button_context(Menu):
             elif SelectedEntry.TypeID == MaterialID:
                 AreAllTextures = False
                 AreAllMeshes = False
+            else:
+                AreAllMeshes = False
+                AreAllTextures = False
+                AreAllMaterials = False
         
         RemoveFromPatchName = "Remove From Patch" if SingleEntry else f"Remove {NumSelected} From Patch"
         AddToPatchName = "Add To Patch" if SingleEntry else f"Add {NumSelected} To Patch"
         ImportMeshName = "Import Mesh" if SingleEntry else f"Import {NumSelected} Meshes"
         ImportTextureName = "Import Texture" if SingleEntry else f"Import {NumSelected} Textures"
         ImportMaterialName = "Import Material" if SingleEntry else f"Import {NumSelected} Materials"
-        DumpObjectName = "Dump Object" if SingleEntry else f"Dump {NumSelected} Objects"
+        DumpObjectName = "Export Object Dump" if SingleEntry else f"Export {NumSelected} Object Dumps"
+        ImportDumpObjectName = "Import Object Dump" if SingleEntry else f"Import {NumSelected} Object Dumps"
         SaveTextureName = "Save Blender Texture" if SingleEntry else f"Save Blender {NumSelected} Textures"
         SaveMaterialName = "Save Material" if SingleEntry else f"Save {NumSelected} Materials"
         UndoName = "Undo Modifications" if SingleEntry else f"Undo {NumSelected} Modifications"
@@ -4834,11 +4848,15 @@ class WM_MT_button_context(Menu):
             row.operator("helldiver2.material_import", icon='IMPORT', text=ImportMaterialName).object_id = FileIDStr
         # Draw export buttons
         row.separator()
+        if SingleEntry:
+            props = row.operator("helldiver2.archive_object_dump_import", icon='PACKAGE', text=ImportDumpObjectName)
+            props.object_id     = FileIDStr
+            props.object_typeid = TypeIDStr
         props = row.operator("helldiver2.archive_object_dump_export", icon='PACKAGE', text=DumpObjectName)
         props.object_id     = FileIDStr
         props.object_typeid = TypeIDStr
         # Draw dump import button
-        if AreAllMaterials and SingleEntry: row.operator("helldiver2.archive_object_dump_import", icon="IMPORT", text="Import Raw Dump").object_id = FileIDStr
+        # if AreAllMaterials and SingleEntry: row.operator("helldiver2.archive_object_dump_import", icon="IMPORT", text="Import Raw Dump").object_id = FileIDStr
         # Draw save buttons
         row.separator()
         if AreAllMeshes:
