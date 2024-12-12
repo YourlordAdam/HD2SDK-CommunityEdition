@@ -2849,6 +2849,13 @@ def ObjectHasModifiers(self):
             return True
     return False
 
+def ObjectHasShapeKeys(self):
+    for obj in bpy.context.selected_objects:
+        if hasattr(obj.data.shape_keys, 'key_blocks'):
+            self.report({'ERROR'}, f"Object: {obj.name} has {len(obj.data.shape_keys.key_blocks)} unapplied shape keys")
+            return True
+    return False
+
 def AllTransformsApplied(self):
     for obj in bpy.context.selected_objects:
         try:
@@ -2904,7 +2911,7 @@ def HasZeroVerticies(self):
     return False
 
 def MeshNotValidToSave(self):
-    return PatchesNotLoaded(self) or DuplicateIDsInScene(self) or IncorrectVertexGroupNaming(self) or ObjectHasModifiers(self) or MaterialsNumberNames(self) or HasZeroVerticies(self)
+    return PatchesNotLoaded(self) or DuplicateIDsInScene(self) or IncorrectVertexGroupNaming(self) or ObjectHasModifiers(self) or MaterialsNumberNames(self) or HasZeroVerticies(self) or ObjectHasShapeKeys(self)
 
 def CopyToClipboard(txt):
     cmd='echo '+txt.strip()+'|clip'
