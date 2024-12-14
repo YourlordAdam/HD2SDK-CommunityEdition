@@ -71,3 +71,8 @@ cbfe5ddf73d50785 AF-02 Haz-Master
 19b5a68e61d7a9d7 UF-16 Inspector
 b2d7f35cb2ab24ce AF-52 Lockdown
 86a9bdfc23c01517 AF-50 Noxious Ranger
+1a204afc2362648b SR-18 Roadblock
+082f22454170efd6 SR-24 Street Scout
+b186eae3f2b61509 SR-64 Cinderblock
+25fa0f1d426ad6bd AC-1 Dutiful
+460f2faee22f5850 AC-2 Obedient

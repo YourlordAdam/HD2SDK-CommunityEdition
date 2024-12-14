@@ -63,3 +63,8 @@ fb025c06b0408e5f UF-16 Inspector
 884fde6481f699e3 AF-52 Lockdown
 88b7d737b6e62cc0 UF-84 Doubt Killer
 be1fbdaa4b77e86b AF-02 Haz-Master
+c7b0eaff041030c2 SR-18 Roadblock
+b68f33f2cdd058da SR-24 Street Scout
+84fd7aab7cf6f62d SR-64 Cinderblock
+424fed21023b620d AC-1 Dutiful
+080f2f101b1fb6f6 AC-2 Obedient
