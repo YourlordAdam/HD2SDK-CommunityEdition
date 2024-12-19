@@ -9668,6 +9668,7 @@
 421324886246020354 content/fac_helldivers/equipment/primary_weapons/pump_shotgun_plasma/pump_shotgun_plasma
 6047980762772154079 content/fac_helldivers/equipment/primary_weapons/pump_shotgun_slug/pump_shotgun_slug
 13361269385325929572 content/fac_helldivers/equipment/sidearm_weapons/revolver_pistol/revolver_speedloader
+8422338628769435505 Warp_Ship
 685817687590585291 roof_solar_panel_5x5_01
 2905571548111627985 abs_ventilation_roof_05
 3230743807044598365 abs_ventilation_roof_06
@@ -12027,3 +12028,4 @@
 10205688452656732735 Proof of Faultless Virtue
 3434522770037271184 Cover of Darkness
 6910014273626452517 Order of the Venerated Ballot
+10835289456440565066 Harvester
