@@ -309,9 +309,11 @@ def GetMeshData(og_object):
     # get normals, tangents, bitangents
     #mesh.calc_tangents()
     # 4.3 compatibility change
-    if not mesh.has_custom_normals:
-        mesh.create_normals_split()
-    mesh.calc_normals_split()
+    if bpy.app.version[0]>=4 and bpy.app.version[1]<1:
+        if not mesh.has_custom_normals:
+            mesh.create_normals_split()
+        mesh.calc_normals_split()
+        
     for loop in mesh.loops:
         normals[loop.vertex_index]    = loop.normal.normalized()
         #tangents[loop.vertex_index]   = loop.tangent.normalized()
