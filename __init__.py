@@ -2459,14 +2459,17 @@ class StingrayMeshFile:
             self.SetupRawMeshComponents(OrderedMeshes)
 
         # Serialize Gpu Data
-        for stream_idx in range(len(OrderedMeshes)):
-            Stream_Info = self.StreamInfoArray[stream_idx]
-            if gpu.IsReading():
-                self.SerializeIndexBuffer(gpu, Stream_Info, stream_idx, OrderedMeshes)
-                self.SerializeVertexBuffer(gpu, Stream_Info, stream_idx, OrderedMeshes)
-            else:
-                self.SerializeVertexBuffer(gpu, Stream_Info, stream_idx, OrderedMeshes)
-                self.SerializeIndexBuffer(gpu, Stream_Info, stream_idx, OrderedMeshes)
+        # for some reason you only seem to need index 0, some meshes break with more
+        # TODO: Figure out why data gets deleted on more passes and figure out what the other indices even do
+        # for stream_idx in range(len(OrderedMeshes)):
+        stream_idx = 0
+        Stream_Info = self.StreamInfoArray[stream_idx]
+        if gpu.IsReading():
+            self.SerializeIndexBuffer(gpu, Stream_Info, stream_idx, OrderedMeshes)
+            self.SerializeVertexBuffer(gpu, Stream_Info, stream_idx, OrderedMeshes)
+        else:
+            self.SerializeVertexBuffer(gpu, Stream_Info, stream_idx, OrderedMeshes)
+            self.SerializeIndexBuffer(gpu, Stream_Info, stream_idx, OrderedMeshes)
 
     def SerializeIndexBuffer(self, gpu, Stream_Info, stream_idx, OrderedMeshes):
         # get indices
