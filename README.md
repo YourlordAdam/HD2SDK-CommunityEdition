@@ -25,9 +25,7 @@ Community Edition aims to bring quality of life features to the Helldivers 2 Mod
 The developers of the original version of the tool have stated that they are unlikely to update it. Therefore, this community version of it has been made to bring quality of life features and to fix issues with the base version of the tool.
 
 ## Installation
-Download the [latest release build](https://github.com/Boxofbiscuits97/HD2SDK-CommunityEdition/releases) and install it into [Blender 4.0](https://www.blender.org/download/previous-versions/). Windows is the only supported operating system.
-> [!IMPORTANT]
-> <ins>**You MUST use Blender 4.0**</ins> due to API changes is Blender 4.1 and onward that break the tool.
+Download the [latest release build](https://github.com/Boxofbiscuits97/HD2SDK-CommunityEdition/releases) and install it into [Blender 4.x](https://www.blender.org/download/). Windows is the only supported operating system.
 
 ## Usage
 We've taken the time to write a tutorial focused on armor modding which should assist those already moderately familiar with mesh modding and Blender in general. Unfortunately we do not have the means to provide constant support to anyone new to either, but in the event anyone should write a more in-depth tutorial, create a video tutorial, etc, we would be happy to feature it here if it's brought to our attention.
