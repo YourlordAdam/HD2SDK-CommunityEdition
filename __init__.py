@@ -2459,17 +2459,14 @@ class StingrayMeshFile:
             self.SetupRawMeshComponents(OrderedMeshes)
 
         # Serialize Gpu Data
-        # for some reason you only seem to need index 0, some meshes break with more
-        # TODO: Figure out why data gets deleted on more passes and figure out what the other indices even do
-        # for stream_idx in range(len(OrderedMeshes)):
-        stream_idx = 0
-        Stream_Info = self.StreamInfoArray[stream_idx]
-        if gpu.IsReading():
-            self.SerializeIndexBuffer(gpu, Stream_Info, stream_idx, OrderedMeshes)
-            self.SerializeVertexBuffer(gpu, Stream_Info, stream_idx, OrderedMeshes)
-        else:
-            self.SerializeVertexBuffer(gpu, Stream_Info, stream_idx, OrderedMeshes)
-            self.SerializeIndexBuffer(gpu, Stream_Info, stream_idx, OrderedMeshes)
+        for stream_idx in range(len(OrderedMeshes)):
+            Stream_Info = self.StreamInfoArray[stream_idx]
+            if gpu.IsReading():
+                self.SerializeIndexBuffer(gpu, Stream_Info, stream_idx, OrderedMeshes)
+                self.SerializeVertexBuffer(gpu, Stream_Info, stream_idx, OrderedMeshes)
+            else:
+                self.SerializeVertexBuffer(gpu, Stream_Info, stream_idx, OrderedMeshes)
+                self.SerializeIndexBuffer(gpu, Stream_Info, stream_idx, OrderedMeshes)
 
     def SerializeIndexBuffer(self, gpu, Stream_Info, stream_idx, OrderedMeshes):
         # get indices
@@ -2548,7 +2545,7 @@ class StingrayMeshFile:
                 if Mesh_Info.Sections[0].NumVertices != RealNumVerts:
                     for Section in Mesh_Info.Sections:
                         Section.NumVertices = RealNumVerts
-                    self.ReInitRawMeshVerts()
+                    self.ReInitRawMeshVerts(mesh)
 
     def SerializeVertexBuffer(self, gpu, Stream_Info, stream_idx, OrderedMeshes):
         # Vertex Buffer
@@ -2696,10 +2693,10 @@ class StingrayMeshFile:
             NewMesh.InitBlank(Mesh_Info.GetNumVertices(), Mesh_Info.GetNumIndices(), numUVs, numBoneIndices)
             self.RawMeshes.append(NewMesh)
     
-    def ReInitRawMeshVerts(self):
-        for mesh in self.RawMeshes:
-            Mesh_Info = self.MeshInfoArray[self.DEV_MeshInfoMap[mesh.MeshInfoIndex]]
-            mesh.ReInitVerts(Mesh_Info.GetNumVertices())
+    def ReInitRawMeshVerts(self, mesh):
+        # for mesh in self.RawMeshes:
+        Mesh_Info = self.MeshInfoArray[self.DEV_MeshInfoMap[mesh.MeshInfoIndex]]
+        mesh.ReInitVerts(Mesh_Info.GetNumVertices())
 
     def SetupRawMeshComponents(self, OrderedMeshes):
         for stream_idx in range(len(OrderedMeshes)):
