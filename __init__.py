@@ -119,7 +119,7 @@ TextureTypeLookup = {
 def CheckBlenderVersion():
     global OnCorrectBlenderVersion
     BlenderVersion = bpy.app.version
-    OnCorrectBlenderVersion = (BlenderVersion[0] == 4 and 3 >= BlenderVersion[1] >= 0)
+    OnCorrectBlenderVersion = (BlenderVersion[0] == 4 and BlenderVersion[1] <= 3)
     PrettyPrint(f"Blender Version: {BlenderVersion} Correct Version: {OnCorrectBlenderVersion}")
 
 def PrettyPrint(msg, type="info"): # Inspired by FortnitePorting
@@ -309,7 +309,7 @@ def GetMeshData(og_object):
     # get normals, tangents, bitangents
     #mesh.calc_tangents()
     # 4.3 compatibility change
-    if bpy.app.version[0]>=4 and bpy.app.version[1]<1:
+    if bpy.app.version[0] >= 4 and bpy.app.version[1] == 0:
         if not mesh.has_custom_normals:
             mesh.create_normals_split()
         mesh.calc_normals_split()
@@ -489,7 +489,7 @@ def CreateModel(model, id, customization_info, bone_names):
         # -- || ASSIGN NORMALS || -- #
         if len(mesh.VertexNormals) == len(mesh.VertexPositions):
             # 4.3 compatibility change
-            if bpy.app.version[0]>=4 and bpy.app.version[1]>=1:
+            if bpy.app.version[0] >= 4 and bpy.app.version[1] >= 1:
                 new_mesh.shade_smooth()
             else:
                 new_mesh.use_auto_smooth = True
@@ -4535,8 +4535,11 @@ class HellDivers2ToolsPanel(Panel):
         if not OnCorrectBlenderVersion:
             row.label(text="Using Incorrect Blender Version!")
             row = layout.row()
-            row.label(text="Please Use Blender 4.0")
+            row.label(text="Please Use Blender 4.X")
             return
+        
+        if bpy.app.version[1] > 0:
+            row.label(text="Warning! Soft Supported Blender Version. Issues may Occur.", icon='ERROR')
 
         # Draw Settings, Documentation and Spreadsheet
         mainbox = layout.box()
