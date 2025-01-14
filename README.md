@@ -1,3 +1,6 @@
+# This fork is just for me to add material templates i use, atm this is only the ArmorLUT material.
+
+
 # Helldivers 2 SDK: Community Edition
 A Blender addon facilitating the modding of textures, meshes and materials contained within Helldivers 2 archives.
 
