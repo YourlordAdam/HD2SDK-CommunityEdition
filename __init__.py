@@ -220,7 +220,7 @@ def SaveUnsavedEntries(self):
                     PrettyPrint(f"Saved {int(Entry.FileID)}")
 
 def RandomHash16():
-    r.seed(datetime.now().timestamp())
+    r.seed(datetime.datetime.now().timestamp())
     return r.randint(1, 0xffffffffffffffff)
 #endregion
 
@@ -2158,7 +2158,7 @@ class RawMaterialClass:
         else:
             try:
                 self.MatID   = int(name)
-                r.seed(datetime.now().timestamp())
+                r.seed(datetime.datetime.now().timestamp())
                 self.ShortID = r.randint(1, 0xffffffff)
             except:
                 raise Exception("Material name must be a number")
@@ -3986,8 +3986,10 @@ def CreateModdedMaterial(template, ID=None):
     Entry = TocEntry()
     if ID == None:
         Entry.FileID = RandomHash16()
+        PrettyPrint(f"File ID is now: {Entry.FileID}")
     else:
         Entry.FileID = ID
+        PrettyPrint(f"Found pre-existing file ID: {ID}")
 
     Entry.TypeID = MaterialID
     Entry.MaterialTemplate = template
