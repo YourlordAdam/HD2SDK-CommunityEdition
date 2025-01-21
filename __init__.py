@@ -3984,8 +3984,7 @@ def CreateModdedMaterial(template, ID=None):
 
     Entry = TocEntry()
     if ID == None:
-        r.seed(datetime.now().timestamp())
-        Entry.FileID = r.randint(1, 0xffffffffffffffff)
+        Entry.FileID = RandomHash16()
     else:
         Entry.FileID = ID
 
