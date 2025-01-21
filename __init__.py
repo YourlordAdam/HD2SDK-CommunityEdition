@@ -219,7 +219,7 @@ def SaveUnsavedEntries(self):
                     Global_TocManager.Save(int(Entry.FileID), Entry.TypeID)
                     PrettyPrint(f"Saved {int(Entry.FileID)}")
 
-def RandomHash16(self):
+def RandomHash16():
     r.seed(datetime.now().timestamp())
     return r.randint(1, 0xffffffffffffffff)
 #endregion
@@ -2158,6 +2158,7 @@ class RawMaterialClass:
         else:
             try:
                 self.MatID   = int(name)
+                r.seed(datetime.now().timestamp())
                 self.ShortID = r.randint(1, 0xffffffff)
             except:
                 raise Exception("Material name must be a number")
@@ -3425,7 +3426,7 @@ class GenerateEntryIDOperator(Operator):
 
     def execute(self, context):
         global Global_randomID
-        Global_randomID = str(r.randint(1, 0xffffffffffffffff))
+        Global_randomID = str(RandomHash16())
         PrettyPrint(f"Generated random ID: {Global_randomID}")
         return{'FINISHED'}
 
