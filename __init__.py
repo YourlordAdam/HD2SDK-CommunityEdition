@@ -218,6 +218,10 @@ def SaveUnsavedEntries(self):
                 if not Entry.IsModified:
                     Global_TocManager.Save(int(Entry.FileID), Entry.TypeID)
                     PrettyPrint(f"Saved {int(Entry.FileID)}")
+
+def RandomHash16(self):
+    r.seed(datetime.now().timestamp())
+    return r.randint(1, 0xffffffffffffffff)
 #endregion
 
 #region Functions: Blender
@@ -1188,7 +1192,7 @@ class TocManager():
             dup.IsCreated = True
             # if self.ActivePatch.GetEntry(dup.FileID, dup.TypeID) != None and NewID == None:
             #     GenID = True
-            if GenID and NewID == None: dup.FileID = r.randint(1, 0xffffffffffffffff)
+            if GenID and NewID == None: dup.FileID = RandomHash16()
             if NewID != None:
                 dup.FileID = NewID
 
@@ -1354,7 +1358,7 @@ def SaveStingrayMaterial(self, ID, TocData, GpuData, StreamData, LoadedData):
             StingrayTex.Serialize(Toc, Gpu, Stream)
             # add texture entry to archive
             Entry = TocEntry()
-            Entry.FileID = r.randint(1, 0xffffffffffffffff)
+            Entry.FileID = RandomHash16()
             Entry.TypeID = TexID
             Entry.IsCreated = True
             Entry.SetData(Toc.Data, Gpu.Data, Stream.Data, False)
@@ -1365,7 +1369,7 @@ def SaveStingrayMaterial(self, ID, TocData, GpuData, StreamData, LoadedData):
             Entry = Global_TocManager.GetEntry(int(mat.TexIDs[TexIdx]), TexID, True)
             if Entry != None:
                 Entry = deepcopy(Entry)
-                Entry.FileID = r.randint(1, 0xffffffffffffffff)
+                Entry.FileID = RandomHash16()
                 Entry.IsCreated = True
                 Global_TocManager.AddNewEntryToPatch(Entry)
                 mat.TexIDs[TexIdx] = Entry.FileID
@@ -3970,7 +3974,7 @@ def CreateModdedMaterial(template, ID=None):
 
     Entry = TocEntry()
     if ID == None:
-        r.seed(time.time())
+        r.seed(datetime.now().timestamp())
         Entry.FileID = r.randint(1, 0xffffffffffffffff)
     else:
         Entry.FileID = ID
