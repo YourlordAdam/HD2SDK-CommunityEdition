@@ -1481,6 +1481,7 @@ def CreateAddonMaterial(ID, StingrayMat, mat, Entry):
     normalMap = nodeTree.nodes.new('ShaderNodeNormalMap')
     normalMap.location = (-150, -150)
 
+    bsdf.inputs['IOR'].default_value = 1
     bsdf.inputs['Emission Strength'].default_value = 1
 
     bpy.ops.file.unpack_all(method='REMOVE')
@@ -1493,9 +1494,20 @@ def CreateAddonMaterial(ID, StingrayMat, mat, Entry):
     
 def SetupBasicBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separateColor, normalMap):
     bsdf.inputs['Emission Strength'].default_value = 0
+    inputNode.location = (-750, 0)
+    separateColorNormal = nodeTree.nodes.new('ShaderNodeSeparateColor')
+    separateColorNormal.location = (-550, -150)
+    combineColorNormal = nodeTree.nodes.new('ShaderNodeCombineColor')
+    combineColorNormal.location = (-350, -150)
+    combineColorNormal.inputs['Blue'].default_value = 1
     nodeTree.links.new(inputNode.outputs['Base Color'], bsdf.inputs['Base Color'])
-    nodeTree.links.new(inputNode.outputs['Normal'], normalMap.inputs['Color'])
+
+    nodeTree.links.new(inputNode.outputs['Normal'], separateColorNormal.inputs['Color'])
+    nodeTree.links.new(separateColorNormal.outputs['Red'], combineColorNormal.inputs['Red'])
+    nodeTree.links.new(separateColorNormal.outputs['Green'], combineColorNormal.inputs['Green'])
+    nodeTree.links.new(combineColorNormal.outputs['Color'], normalMap.inputs['Color'])
     nodeTree.links.new(normalMap.outputs['Normal'], bsdf.inputs['Normal'])
+
     nodeTree.links.new(inputNode.outputs['PBR'], separateColor.inputs['Color'])
     nodeTree.links.new(separateColor.outputs['Red'], bsdf.inputs['Metallic'])
     nodeTree.links.new(separateColor.outputs['Green'], bsdf.inputs['Roughness'])
