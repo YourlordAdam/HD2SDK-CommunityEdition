@@ -1,3 +1,7 @@
+# Personal fork for material templates not supported by the main branch
+
+
+
 # Helldivers 2 SDK: Community Edition
 A Blender addon facilitating the modding of textures, meshes and materials contained within Helldivers 2 archives.
 
