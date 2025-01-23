@@ -3094,7 +3094,10 @@ class LoadArchiveOperator(Operator, ImportHelper):
 
     def execute(self, context):
         # Sanitize path by removing any provided extension, so the correct TOC file is loaded
-        filepaths = [Global_gamepath + f.name for f in self.files]
+        if not self.is_patch:
+            filepaths = [Global_gamepath + f.name for f in self.files]
+        else:
+            filepaths = [self.filepath, ]
         oldLoadedLength = len(Global_TocManager.LoadedArchives)
         for filepath in filepaths:
             if not os.path.exists(filepath) or filepath.endswith(".ini") or filepath.endswith(".data"):
