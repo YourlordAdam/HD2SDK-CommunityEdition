@@ -221,7 +221,9 @@ def SaveUnsavedEntries(self):
 
 def RandomHash16():
     r.seed(datetime.datetime.now().timestamp())
-    return r.randint(1, 0xffffffffffffffff)
+    hash = r.randint(1, 0xffffffffffffffff)
+    PrettyPrint(f"Generated hash: {hash}")
+    return hash
 #endregion
 
 #region Functions: Blender
@@ -2158,7 +2160,6 @@ class RawMaterialClass:
         else:
             try:
                 self.MatID   = int(name)
-                r.seed(datetime.datetime.now().timestamp())
                 self.ShortID = r.randint(1, 0xffffffff)
             except:
                 raise Exception("Material name must be a number")
