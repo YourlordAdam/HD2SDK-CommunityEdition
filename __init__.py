@@ -1440,6 +1440,9 @@ def CreateGameMaterial(StingrayMat, mat):
         idx +=1
 
 def CreateAddonMaterial(ID, StingrayMat, mat, Entry):
+    mat.node_tree.nodes.clear()
+    output = mat.node_tree.nodes.new('ShaderNodeOutputMaterial')
+    output.location = (200, 300)
     group = mat.node_tree.nodes.new('ShaderNodeGroup')
     treeName = f"{Entry.MaterialTemplate}-{str(ID)}"
     nodeTree = bpy.data.node_groups.new(treeName, 'ShaderNodeTree')
