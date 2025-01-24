@@ -4820,11 +4820,13 @@ class HellDivers2ToolsPanel(Panel):
                     PatchEntry = Global_TocManager.GetEntry(int(Entry.FileID), int(Entry.TypeID))
                     PatchEntry.DEV_DrawIndex = len(DrawChain)
                     
+                    previous_type_icon = type_icon
                     if PatchEntry.MaterialTemplate != None:
                         type_icon = "NODE_MATERIAL"
 
                     row = col.row(align=True); row.separator()
                     props = row.operator("helldiver2.archive_entry", icon=type_icon, text=FriendlyName, emboss=PatchEntry.IsSelected, depress=PatchEntry.IsSelected)
+                    type_icon = previous_type_icon
                     props.object_id     = str(Entry.FileID)
                     props.object_typeid = str(Entry.TypeID)
                     # Draw Entry Buttons
