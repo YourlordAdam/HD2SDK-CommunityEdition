@@ -111,6 +111,14 @@ TextureTypeLookup = {
     )
 }
 
+Global_Materials = (
+        ("basic+", "Basic+", "A basic material with a color, normal, and PBR map which renders in the UI, Sourced from the super credits prop"),
+        ("alphaclip", "Alpha Clip", "A material that supports an alpha mask which does not render in the UI. Sourced from a skeleton pile"),
+        ("original", "Original", "The original template used for all mods uploaded to Nexus prior to the addon's public release, which is bloated with additional unnecessary textures. Sourced from a terminid"),
+        ("basic", "Basic", "A basic material with a color, normal, and PBR map. Sourced from a trash bag prop"),
+        ("emissive", "Emissive", "A basic material with a color, normal, and emission map. Sourced from a vending machine"),
+    )
+
 #endregion
 
 #region Functions: Miscellaneous
@@ -1348,7 +1356,7 @@ def LoadStingrayMaterial(ID, TocData, GpuData, StreamData, Reload, MakeBlendObje
     f = MemoryStream(TocData)
     Material = StingrayMaterial()
     Material.Serialize(f)
-    if MakeBlendObject and not (exists and not Reload): AddMaterialToBlend(ID, Material)
+    if MakeBlendObject and not (exists and not Reload): AddMaterialToBlend(ID, Material, Reload)
     elif force_reload: AddMaterialToBlend(ID, Material, True)
     return Material
 
@@ -3969,15 +3977,8 @@ class AddMaterialOperator(Operator):
     bl_idname = "helldiver2.material_add"
     bl_description = "Adds a New Material to Current Active Patch"
 
-    materials = (
-        ("basic+", "Basic+", "A basic material with a color, normal, and PBR map which renders in the UI, Sourced from the super credits prop"),
-        ("alphaclip", "Alpha Clip", "A material that supports an alpha mask which does not render in the UI. Sourced from a skeleton pile"),
-        ("original", "Original", "The original template used for all mods uploaded to Nexus prior to the addon's public release, which is bloated with additional unnecessary textures. Sourced from a terminid"),
-        ("basic", "Basic", "A basic material with a color, normal, and PBR map. Sourced from a trash bag prop"),
-        ("emissive", "Emissive", "A basic material with a color, normal, and emission map. Sourced from a vending machine"),
-    )
-
-    selected_material: EnumProperty(items=materials, name="Template", default=0)
+    global Global_Materials
+    selected_material: EnumProperty(items=Global_Materials, name="Template", default=0)
 
     def execute(self, context):
         if PatchesNotLoaded(self):
@@ -3991,6 +3992,35 @@ class AddMaterialOperator(Operator):
         
         return{'FINISHED'}
 
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self)
+    
+class SetMaterialTemplateOperator(Operator):
+    bl_label = "Set Template"
+    bl_idname = "helldiver2.material_set_template"
+    bl_description = "Sets the material to a modded material template"
+    
+    global Global_Materials
+    selected_material: EnumProperty(items=Global_Materials, name="Template", default=0)
+
+    entry_id: StringProperty()
+
+    def execute(self, context):
+        if PatchesNotLoaded(self):
+            return {'CANCELLED'}
+        
+        PrettyPrint(f"Found: {self.entry_id}")
+            
+        Entry = Global_TocManager.GetEntry(int(self.entry_id), MaterialID)
+        if not Entry:
+            raise Exception(f"Could not find entry at ID: {self.entry_id}")
+
+        Entry.MaterialTemplate = self.selected_material
+        Entry.Load(True)
+        
+        PrettyPrint(f"Finished Set Template: {self.selected_material}")
+        return {'FINISHED'}
+    
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)
 
@@ -4921,6 +4951,8 @@ class WM_MT_button_context(Menu):
                 row.operator("helldiver2.texture_batchexport_png", icon='OUTLINER_OB_IMAGE', text=f"Export {NumSelected} PNG Textures").object_id = FileIDStr
         elif AreAllMaterials:
             row.operator("helldiver2.material_save", icon='FILE_BLEND', text=SaveMaterialName).object_id = FileIDStr
+            if SingleEntry:
+                row.operator("helldiver2.material_set_template", icon='MATSHADERBALL').entry_id = str(Entry.FileID)
         # Draw copy ID buttons
         if SingleEntry:
             row.separator()
@@ -5011,6 +5043,7 @@ classes = (
     CopyDecimalIDOperator,
     CopyHexIDOperator,
     GenerateEntryIDOperator,
+    SetMaterialTemplateOperator,
 )
 
 Global_TocManager = TocManager()
