@@ -1,6 +1,6 @@
 bl_info = {
     "name": "Helldivers 2 SDK: Community Edition",
-    "version": (2, 1, 3),
+    "version": (2, 2, 0),
     "blender": (4, 0, 0),
     "category": "Import-Export",
 }
@@ -104,7 +104,7 @@ TextureTypeLookup = {
         "Emission", 
         "Base Color/Metallic"
     ),
-        "armorlut": (
+    "armorlut": (
         "Decal", 
         "", 
         "Pattern LUT", 
@@ -123,6 +123,15 @@ TextureTypeLookup = {
         "Base Color/Metallic"
     )
 }
+
+Global_Materials = (
+        ("basic+", "Basic+", "A basic material with a color, normal, and PBR map which renders in the UI, Sourced from the super credits prop"),
+        ("alphaclip", "Alpha Clip", "A material that supports an alpha mask which does not render in the UI. Sourced from a skeleton pile"),
+        ("original", "Original", "The original template used for all mods uploaded to Nexus prior to the addon's public release, which is bloated with additional unnecessary textures. Sourced from a terminid"),
+        ("basic", "Basic", "A basic material with a color, normal, and PBR map. Sourced from a trash bag prop"),
+        ("emissive", "Emissive", "A basic material with a color, normal, and emission map. Sourced from a vending machine"),
+        ("armorlut", "Armor LUT", "An advanced material using multiple mask textures and LUTs to texture the mesh only advanced users should be using this"),
+    )
 
 #endregion
 
@@ -1361,7 +1370,7 @@ def LoadStingrayMaterial(ID, TocData, GpuData, StreamData, Reload, MakeBlendObje
     f = MemoryStream(TocData)
     Material = StingrayMaterial()
     Material.Serialize(f)
-    if MakeBlendObject and not (exists and not Reload): AddMaterialToBlend(ID, Material)
+    if MakeBlendObject and not (exists and not Reload): AddMaterialToBlend(ID, Material, Reload)
     elif force_reload: AddMaterialToBlend(ID, Material, True)
     return Material
 
@@ -1445,6 +1454,9 @@ def CreateGameMaterial(StingrayMat, mat):
         idx +=1
 
 def CreateAddonMaterial(ID, StingrayMat, mat, Entry):
+    mat.node_tree.nodes.clear()
+    output = mat.node_tree.nodes.new('ShaderNodeOutputMaterial')
+    output.location = (200, 300)
     group = mat.node_tree.nodes.new('ShaderNodeGroup')
     treeName = f"{Entry.MaterialTemplate}-{str(ID)}"
     nodeTree = bpy.data.node_groups.new(treeName, 'ShaderNodeTree')
@@ -1494,6 +1506,7 @@ def CreateAddonMaterial(ID, StingrayMat, mat, Entry):
     normalMap = nodeTree.nodes.new('ShaderNodeNormalMap')
     normalMap.location = (-150, -150)
 
+    bsdf.inputs['IOR'].default_value = 1
     bsdf.inputs['Emission Strength'].default_value = 1
 
     bpy.ops.file.unpack_all(method='REMOVE')
@@ -1506,9 +1519,20 @@ def CreateAddonMaterial(ID, StingrayMat, mat, Entry):
     
 def SetupBasicBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separateColor, normalMap):
     bsdf.inputs['Emission Strength'].default_value = 0
+    inputNode.location = (-750, 0)
+    separateColorNormal = nodeTree.nodes.new('ShaderNodeSeparateColor')
+    separateColorNormal.location = (-550, -150)
+    combineColorNormal = nodeTree.nodes.new('ShaderNodeCombineColor')
+    combineColorNormal.location = (-350, -150)
+    combineColorNormal.inputs['Blue'].default_value = 1
     nodeTree.links.new(inputNode.outputs['Base Color'], bsdf.inputs['Base Color'])
-    nodeTree.links.new(inputNode.outputs['Normal'], normalMap.inputs['Color'])
+
+    nodeTree.links.new(inputNode.outputs['Normal'], separateColorNormal.inputs['Color'])
+    nodeTree.links.new(separateColorNormal.outputs['Red'], combineColorNormal.inputs['Red'])
+    nodeTree.links.new(separateColorNormal.outputs['Green'], combineColorNormal.inputs['Green'])
+    nodeTree.links.new(combineColorNormal.outputs['Color'], normalMap.inputs['Color'])
     nodeTree.links.new(normalMap.outputs['Normal'], bsdf.inputs['Normal'])
+
     nodeTree.links.new(inputNode.outputs['PBR'], separateColor.inputs['Color'])
     nodeTree.links.new(separateColor.outputs['Red'], bsdf.inputs['Metallic'])
     nodeTree.links.new(separateColor.outputs['Green'], bsdf.inputs['Roughness'])
@@ -3970,16 +3994,8 @@ class AddMaterialOperator(Operator):
     bl_idname = "helldiver2.material_add"
     bl_description = "Adds a New Material to Current Active Patch"
 
-    materials = (
-        ("basic+", "Basic+", "A basic material with a color, normal, and PBR map which renders in the UI, Sourced from the super credits prop"),
-        ("alphaclip", "Alpha Clip", "A material that supports an alpha mask which does not render in the UI. Sourced from a skeleton pile"),
-        ("original", "Original", "The original template used for all mods uploaded to Nexus prior to the addon's public release, which is bloated with additional unnecessary textures. Sourced from a terminid"),
-        ("basic", "Basic", "A basic material with a color, normal, and PBR map. Sourced from a trash bag prop"),
-        ("emissive", "Emissive", "A basic material with a color, normal, and emission map. Sourced from a vending machine"),
-        ("armorlut", "Armor LUT", "An advanced material using multiple mask textures and LUTs to texture the mesh only advanced users should be using this"),
-    )
-
-    selected_material: EnumProperty(items=materials, name="Template", default=0)
+    global Global_Materials
+    selected_material: EnumProperty(items=Global_Materials, name="Template", default=0)
 
     def execute(self, context):
         if PatchesNotLoaded(self):
@@ -3993,6 +4009,35 @@ class AddMaterialOperator(Operator):
         
         return{'FINISHED'}
 
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self)
+    
+class SetMaterialTemplateOperator(Operator):
+    bl_label = "Set Template"
+    bl_idname = "helldiver2.material_set_template"
+    bl_description = "Sets the material to a modded material template"
+    
+    global Global_Materials
+    selected_material: EnumProperty(items=Global_Materials, name="Template", default=0)
+
+    entry_id: StringProperty()
+
+    def execute(self, context):
+        if PatchesNotLoaded(self):
+            return {'CANCELLED'}
+        
+        PrettyPrint(f"Found: {self.entry_id}")
+            
+        Entry = Global_TocManager.GetEntry(int(self.entry_id), MaterialID)
+        if not Entry:
+            raise Exception(f"Could not find entry at ID: {self.entry_id}")
+
+        Entry.MaterialTemplate = self.selected_material
+        Entry.Load(True)
+        
+        PrettyPrint(f"Finished Set Template: {self.selected_material}")
+        return {'FINISHED'}
+    
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)
 
@@ -4792,11 +4837,13 @@ class HellDivers2ToolsPanel(Panel):
                     PatchEntry = Global_TocManager.GetEntry(int(Entry.FileID), int(Entry.TypeID))
                     PatchEntry.DEV_DrawIndex = len(DrawChain)
                     
+                    previous_type_icon = type_icon
                     if PatchEntry.MaterialTemplate != None:
                         type_icon = "NODE_MATERIAL"
 
                     row = col.row(align=True); row.separator()
                     props = row.operator("helldiver2.archive_entry", icon=type_icon, text=FriendlyName, emboss=PatchEntry.IsSelected, depress=PatchEntry.IsSelected)
+                    type_icon = previous_type_icon
                     props.object_id     = str(Entry.FileID)
                     props.object_typeid = str(Entry.TypeID)
                     # Draw Entry Buttons
@@ -4923,6 +4970,8 @@ class WM_MT_button_context(Menu):
                 row.operator("helldiver2.texture_batchexport_png", icon='OUTLINER_OB_IMAGE', text=f"Export {NumSelected} PNG Textures").object_id = FileIDStr
         elif AreAllMaterials:
             row.operator("helldiver2.material_save", icon='FILE_BLEND', text=SaveMaterialName).object_id = FileIDStr
+            if SingleEntry:
+                row.operator("helldiver2.material_set_template", icon='MATSHADERBALL').entry_id = str(Entry.FileID)
         # Draw copy ID buttons
         if SingleEntry:
             row.separator()
@@ -5013,6 +5062,7 @@ classes = (
     CopyDecimalIDOperator,
     CopyHexIDOperator,
     GenerateEntryIDOperator,
+    SetMaterialTemplateOperator,
 )
 
 Global_TocManager = TocManager()
