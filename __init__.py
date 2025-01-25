@@ -1451,6 +1451,9 @@ def AddMaterialToBlend(ID, StingrayMat, EmptyMatExists=False):
     else: CreateGameMaterial(StingrayMat, mat)
     
 def CreateGameMaterial(StingrayMat, mat):
+    for node in mat.node_tree.nodes:
+        if node.bl_idname == 'ShaderNodeTexImage':
+            mat.node_tree.nodes.remove(node)
     idx = 0
     height = round(len(StingrayMat.TexIDs) * 300 / 2)
     for TextureID in StingrayMat.TexIDs:
@@ -4588,8 +4591,7 @@ class HellDivers2ToolsPanel(Panel):
             row.operator("helldiver2.texture_import", icon='IMPORT', text="").object_id = str(Entry.FileID)
         elif Entry.TypeID == MaterialID:
             row.operator("helldiver2.material_save", icon='FILE_BLEND', text="").object_id = str(Entry.FileID)
-            if Entry.MaterialTemplate == None:
-                row.operator("helldiver2.material_import", icon='IMPORT', text="").object_id = str(Entry.FileID)
+            row.operator("helldiver2.material_import", icon='IMPORT', text="").object_id = str(Entry.FileID)
             row.operator("helldiver2.material_showeditor", icon='MOD_LINEART', text="").object_id = str(Entry.FileID)
             self.draw_material_editor(Entry, box, row)
         if Global_TocManager.IsInPatch(Entry):
@@ -4948,7 +4950,7 @@ class WM_MT_button_context(Menu):
             row.operator("helldiver2.archive_mesh_import", icon='IMPORT', text=ImportMeshName).object_id = FileIDStr
         if AreAllTextures:
             row.operator("helldiver2.texture_import", icon='IMPORT', text=ImportTextureName).object_id = FileIDStr
-        elif AreAllMaterials and Entry.MaterialTemplate == None:
+        elif AreAllMaterials:
             row.operator("helldiver2.material_import", icon='IMPORT', text=ImportMaterialName).object_id = FileIDStr
         # Draw export buttons
         row.separator()
