@@ -753,7 +753,6 @@ def GetEntryParentMaterialID(entry):
         for i in range(6):
             f.uint32(0)
         parentID = f.uint64(0)
-        PrettyPrint(f"Parent material for Material: {entry.FileID} is: {parentID}")
         return parentID
     else:
         raise Exception(f"Entry: {entry.FileID} is not a material")
@@ -1131,8 +1130,9 @@ class TocManager():
                     if ID in Global_MaterialParentIDs:
                         entry.MaterialTemplate = Global_MaterialParentIDs[ID]
                         entry.Load()
+                        PrettyPrint(f"Creating Material: {entry.FileID} Template: {entry.MaterialTemplate}")
                     else:
-                        PrettyPrint(f"Parent ID: {ID} is not an custom material, skipping.")
+                        PrettyPrint(f"Material: {entry.FileID} Parent ID: {ID} is not an custom material, skipping.")
 
         # Get search archives
         if len(self.SearchArchives) == 0:
