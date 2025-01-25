@@ -119,6 +119,14 @@ Global_Materials = (
         ("emissive", "Emissive", "A basic material with a color, normal, and emission map. Sourced from a vending machine"),
     )
 
+Global_MaterialParentIDs = {
+    3430705909399566334 : "basic+",
+    15586118709890920288 : "alphaclip",
+    6101987038150196875 : "original",
+    15356477064658408677 : "basic",
+    15235712479575174153 : "emissive"
+}
+
 #endregion
 
 #region Functions: Miscellaneous
@@ -739,6 +747,17 @@ def LoadArchiveHashes():
 
     Global_ArchiveHashes.append(["9ba626afa44a3aa3", "SDK: Base Patch Archive"])
 
+def GetEntryParentMaterialID(entry):
+    if entry.TypeID == MaterialID:
+        f = MemoryStream(entry.TocData)
+        for i in range(6):
+            f.uint32(0)
+        parentID = f.uint64(0)
+        PrettyPrint(f"Parent material for Material: {entry.FileID} is: {parentID}")
+        return parentID
+    else:
+        raise Exception(f"Entry: {entry.FileID} is not a material")
+
 #endregion
 
 #region Configuration
@@ -1091,8 +1110,6 @@ class TocManager():
         toc = StreamToc()
         toc.FromFile(path)
         if SetActive and not IsPatch:
-            if bpy.context.scene.Hd2ToolPanelSettings.DeleteOnLoadArchive:
-                PrettyPrint(f"Prank em john")
             unloadEmpty = bpy.context.scene.Hd2ToolPanelSettings.UnloadEmptyArchives and bpy.context.scene.Hd2ToolPanelSettings.EnableTools
             if unloadEmpty:
                 if self.ArchiveNotEmpty(toc):
@@ -1107,6 +1124,15 @@ class TocManager():
         elif SetActive and IsPatch:
             self.Patches.append(toc)
             self.ActivePatch = toc
+
+            for entry in self.ActivePatch.TocEntries:
+                if entry.TypeID == MaterialID:
+                    ID = GetEntryParentMaterialID(entry)
+                    if ID in Global_MaterialParentIDs:
+                        entry.MaterialTemplate = Global_MaterialParentIDs[ID]
+                        entry.Load()
+                    else:
+                        PrettyPrint(f"Parent ID: {ID} is not an custom material, skipping.")
 
         # Get search archives
         if len(self.SearchArchives) == 0:
@@ -1349,7 +1375,7 @@ def LoadStingrayMaterial(ID, TocData, GpuData, StreamData, Reload, MakeBlendObje
     force_reload = False
     try:
         mat = bpy.data.materials[str(ID)]
-        if not mat.use_nodes: force_reload = True
+        force_reload = True
     except: exists = False
 
 
