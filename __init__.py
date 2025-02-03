@@ -741,11 +741,28 @@ def LoadHash(path, title):
 def LoadArchiveHashes():
     HashFiles = os.listdir(Global_archivehashpath)
     for filename in HashFiles:
-        name = filename.replace(".txt", "") + ": "
-        filepath = Global_archivehashpath + filename
-        LoadHash(filepath, name)
+        if ".txt" in filename:
+            title = filename.replace(".txt", "") + ": "
+            filepath = Global_archivehashpath + filename
+            LoadHash(filepath, title)
+        else:
+            LoadSubFolderHash(filename)
 
     Global_ArchiveHashes.append(["9ba626afa44a3aa3", "SDK: Base Patch Archive"])
+
+def LoadSubFolderHash(filename):
+    PrettyPrint(f"Sub: {filename}")
+    subFolderFiles = os.listdir(Global_archivehashpath + filename)
+    for subFileName in subFolderFiles:
+        if ".txt" not in subFileName:
+            PrettyPrint(f"Folder: {filename}")
+            LoadSubFolderHash(f"{filename}\\{subFileName}")
+        elif ".txt" in subFileName:
+            title = subFileName.replace(".txt", "") + ": "
+            filepath = f"{Global_archivehashpath}{filename}\\{subFileName}"
+            PrettyPrint(f"Load: {filepath} {subFileName}")
+            LoadHash(filepath, title)
+
 
 def GetEntryParentMaterialID(entry):
     if entry.TypeID == MaterialID:
