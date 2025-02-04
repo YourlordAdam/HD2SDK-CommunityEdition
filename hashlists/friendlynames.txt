@@ -4833,8 +4833,6 @@
 421324886246020354 content/fac_helldivers/equipment/primary_weapons/pump_shotgun_plasma/pump_shotgun_plasma
 6047980762772154079 content/fac_helldivers/equipment/primary_weapons/pump_shotgun_slug/pump_shotgun_slug
 13361269385325929572 content/fac_helldivers/equipment/sidearm_weapons/revolver_pistol/revolver_speedloader
-14840077516977962372 content/fac_helldivers/equipment/primary_weapons/assault_rifle_helghast/assault_rifle_helghast
-5450511615252257986 content/fac_helldivers/equipment/primary_weapons/smg_helghast/smg_helghast
 6364351340166354540 content/objectives/obj_common/oil_pump/non_objective_oil_pump_animated
 16537737171020264256 content/objectives/obj_common/oil_field/oil_field_plane
 16927169355845479754 content/objectives/obj_common/oil_pump/oil_pump
@@ -12036,3 +12034,4 @@
 15202650839921264242 Strength in Our Arms
 10056836025475208186 Defender of Our Dream
 15124629307682360961 Fre Liberum
+3269081635107968027 Per Democrasum
