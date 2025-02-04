@@ -68,3 +68,7 @@ b68f33f2cdd058da SR-24 Street Scout
 84fd7aab7cf6f62d SR-64 Cinderblock
 424fed21023b620d AC-1 Dutiful
 080f2f101b1fb6f6 AC-2 Obedient
+21a24072a79aeba8 AF-91 Field Chemist
+37882724fe5a136e IE-57 Hell-Bent
+a2f4121316ccdffc IE-12 Righteous
+fea0e08cff101f8e IE-3 Martyr

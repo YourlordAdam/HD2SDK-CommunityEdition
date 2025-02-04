@@ -9670,6 +9670,8 @@
 421324886246020354 content/fac_helldivers/equipment/primary_weapons/pump_shotgun_plasma/pump_shotgun_plasma
 6047980762772154079 content/fac_helldivers/equipment/primary_weapons/pump_shotgun_slug/pump_shotgun_slug
 13361269385325929572 content/fac_helldivers/equipment/sidearm_weapons/revolver_pistol/revolver_speedloader
+14840077516977962372 content/fac_helldivers/equipment/primary_weapons/assault_rifle_helghast/assault_rifle_helghast
+5450511615252257986 content/fac_helldivers/equipment/primary_weapons/smg_helghast/smg_helghast
 8422338628769435505 Warp_Ship
 685817687590585291 roof_solar_panel_5x5_01
 2905571548111627985 abs_ventilation_roof_05
@@ -12033,3 +12035,4 @@
 10835289456440565066 Harvester
 15202650839921264242 Strength in Our Arms
 10056836025475208186 Defender of Our Dream
+15124629307682360961 Fre Liberum
