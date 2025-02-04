@@ -3744,11 +3744,13 @@ def SaveMeshMaterials(objects):
             else:
                 PrettyPrint(f"Skipping Saving Material: {ID} as it already has been modified")
         elif "-" in nodeName:
-            if nodeName.split("-")[1] == str(ID):
+            if str(ID) in nodeName.split("-")[1]:
                 template = nodeName.split("-")[0]
                 PrettyPrint(f"Creating material: {ID} with template: {template}")
                 CreateModdedMaterial(template, ID)
                 Global_TocManager.Save(ID, MaterialID)
+            else:
+                PrettyPrint(f"Failed to find template from group: {nodeName}", "error")
         else:
             PrettyPrint(f"Failed to save material: {ID}", "error")
 
