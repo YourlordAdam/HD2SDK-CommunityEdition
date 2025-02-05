@@ -1,6 +1,6 @@
 bl_info = {
     "name": "Helldivers 2 SDK: Community Edition",
-    "version": (2, 3, 1),
+    "version": (2, 4, 0),
     "blender": (4, 0, 0),
     "category": "Import-Export",
 }
@@ -1464,9 +1464,12 @@ def SaveStingrayMaterial(self, ID, TocData, GpuData, StreamData, LoadedData):
     return [f.Data, b"", b""]
 
 def AddMaterialToBlend(ID, StingrayMat, EmptyMatExists=False):
-    if EmptyMatExists:
+    try:
         mat = bpy.data.materials[str(ID)]
-    else:
+        PrettyPrint(f"Found material for ID: {ID} Skipping creation of new material")
+        return
+    except:
+        PrettyPrint(f"Unable to find material in blender scene for ID: {ID} creating new material")
         mat = bpy.data.materials.new(str(ID)); mat.name = str(ID)
 
     r.seed(ID)
@@ -3758,11 +3761,13 @@ def SaveMeshMaterials(objects):
             else:
                 PrettyPrint(f"Skipping Saving Material: {ID} as it already has been modified")
         elif "-" in nodeName:
-            if nodeName.split("-")[1] == str(ID):
+            if str(ID) in nodeName.split("-")[1]:
                 template = nodeName.split("-")[0]
                 PrettyPrint(f"Creating material: {ID} with template: {template}")
                 CreateModdedMaterial(template, ID)
                 Global_TocManager.Save(ID, MaterialID)
+            else:
+                PrettyPrint(f"Failed to find template from group: {nodeName}", "error")
         else:
             PrettyPrint(f"Failed to save material: {ID}", "error")
 
