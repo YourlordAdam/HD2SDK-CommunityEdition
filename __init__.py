@@ -1468,9 +1468,9 @@ def AddMaterialToBlend(ID, StingrayMat, EmptyMatExists=False):
     else: CreateGameMaterial(StingrayMat, mat)
     
 def CreateGameMaterial(StingrayMat, mat):
-    for node in mat.node_tree.nodes:
-        if node.bl_idname == 'ShaderNodeTexImage':
-            mat.node_tree.nodes.remove(node)
+    # for node in mat.node_tree.nodes:
+    #     if node.bl_idname == 'ShaderNodeTexImage':
+    #         mat.node_tree.nodes.remove(node)
     idx = 0
     height = round(len(StingrayMat.TexIDs) * 300 / 2)
     for TextureID in StingrayMat.TexIDs:
