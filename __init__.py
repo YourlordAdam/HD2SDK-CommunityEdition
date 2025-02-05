@@ -1,6 +1,6 @@
 bl_info = {
     "name": "Helldivers 2 SDK: Community Edition",
-    "version": (2, 4, 0),
+    "version": (2, 4, 1),
     "blender": (4, 0, 0),
     "category": "Import-Export",
 }
@@ -1934,17 +1934,26 @@ class StingrayLocalTransform: # Stingray Local Transform: https://help.autodesk.
         self.scale  = f.vec3_float(self.scale)
         self.dummy  = f.float32(self.dummy)
         return self
+    def SerializeV2(self, f): # Quick and dirty solution, unknown exactly what this is for
+        f.seek(f.tell()+48)
+        self.pos    = f.vec3_float(self.pos)
+        self.dummy  = f.float32(self.dummy)
+        return self
 
 class TransformInfo: # READ ONLY
     def __init__(self):
         self.NumTransforms = 0
         self.Transforms = []
+        self.PositionTransforms = []
     def Serialize(self, f):
         if f.IsWriting():
             raise Exception("This struct is read only (write not implemented)")
         self.NumTransforms = f.uint32(self.NumTransforms)
         f.seek(f.tell()+12)
         self.Transforms = [StingrayLocalTransform().Serialize(f) for n in range(self.NumTransforms)]
+        self.PositionTransforms = [StingrayLocalTransform().SerializeV2(f) for n in range(self.NumTransforms)]
+        for n in range(self.NumTransforms):
+            self.Transforms[n].pos = self.PositionTransforms[n].pos
 
 class CustomizationInfo: # READ ONLY
     def __init__(self):
