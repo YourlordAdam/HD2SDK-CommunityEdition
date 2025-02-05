@@ -1450,9 +1450,12 @@ def SaveStingrayMaterial(self, ID, TocData, GpuData, StreamData, LoadedData):
     return [f.Data, b"", b""]
 
 def AddMaterialToBlend(ID, StingrayMat, EmptyMatExists=False):
-    if EmptyMatExists:
+    try:
         mat = bpy.data.materials[str(ID)]
-    else:
+        PrettyPrint(f"Found material for ID: {ID} Skipping creation of new material")
+        return
+    except:
+        PrettyPrint(f"Unable to find material in blender scene for ID: {ID} creating new material")
         mat = bpy.data.materials.new(str(ID)); mat.name = str(ID)
 
     r.seed(ID)
@@ -1468,9 +1471,9 @@ def AddMaterialToBlend(ID, StingrayMat, EmptyMatExists=False):
     else: CreateGameMaterial(StingrayMat, mat)
     
 def CreateGameMaterial(StingrayMat, mat):
-    # for node in mat.node_tree.nodes:
-    #     if node.bl_idname == 'ShaderNodeTexImage':
-    #         mat.node_tree.nodes.remove(node)
+    for node in mat.node_tree.nodes:
+        if node.bl_idname == 'ShaderNodeTexImage':
+            mat.node_tree.nodes.remove(node)
     idx = 0
     height = round(len(StingrayMat.TexIDs) * 300 / 2)
     for TextureID in StingrayMat.TexIDs:
