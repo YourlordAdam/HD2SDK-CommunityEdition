@@ -4351,10 +4351,10 @@ class SetEntryFriendlyNameOperator(Operator):
 class HelpOperator(Operator):
     bl_label  = "Help"
     bl_idname = "helldiver2.help"
-    bl_description = "Opens Tutorial Document"
+    bl_description = "Link to Modding Discord"
 
     def execute(self, context):
-        url = "https://docs.google.com/document/d/1SF7iEekmxoDdf0EsJu1ww9u2Cr8vzHyn2ycZS7JlWl0"
+        url = "https://discord.gg/helldiversmodding"
         webbrowser.open(url, new=0, autoraise=True)
         return{'FINISHED'}
 
@@ -4709,7 +4709,7 @@ class HellDivers2ToolsPanel(Panel):
 
         # Draw Archive Import/Export Buttons
         row = layout.row(); row = layout.row()
-        row.operator("helldiver2.help", icon='HELP', text="Documentation")
+        row.operator("helldiver2.help", icon='HELP', text="Discord")
         row.operator("helldiver2.archive_spreadsheet", icon='INFO', text="Archive IDs")
         row.operator("helldiver2.github", icon='URL', text= "")
         row = layout.row(); row = layout.row()
