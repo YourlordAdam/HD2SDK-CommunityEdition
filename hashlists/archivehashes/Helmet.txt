@@ -73,3 +73,4 @@ b68f33f2cdd058da SR-24 Street Scout
 a2f4121316ccdffc IE-12 Righteous
 fea0e08cff101f8e IE-3 Martyr
 d1a39b5edac646aa B-22 Model Citizen
+c19663a7f34f88fc TR-40 Gold Eagle
