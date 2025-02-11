@@ -66,6 +66,7 @@ fda9b1496320364e AF-91 Field Chemist
 62c6fbc5cd90448d AF-91 Field Chemist
 cbfe5ddf73d50785 AF-02 Haz-Master
 3d8cf2088ed56091 DP-00 Tactical
+91033cfaaad4ad18 UF-84 Doubt Killer
 0fecb336be1d287b UF-84 Doubt Killer
 871290e9d5703851 UF-50 Bloodhound
 19b5a68e61d7a9d7 UF-16 Inspector
