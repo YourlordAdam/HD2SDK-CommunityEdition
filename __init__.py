@@ -1,6 +1,6 @@
 bl_info = {
     "name": "Helldivers 2 SDK: Community Edition",
-    "version": (2, 4, 4),
+    "version": (2, 5, 0),
     "blender": (4, 0, 0),
     "category": "Import-Export",
 }
@@ -15,6 +15,7 @@ from math import ceil
 from pathlib import Path
 import configparser
 import requests
+import json
 
 #import pyautogui 
 
@@ -43,7 +44,7 @@ Global_typehashpath      = f"{AddonPath}\\hashlists\\typehash.txt"
 Global_filehashpath      = f"{AddonPath}\\hashlists\\filehash.txt"
 Global_friendlynamespath = f"{AddonPath}\\hashlists\\friendlynames.txt"
 
-Global_archivehashpath   = f"{AddonPath}\\hashlists\\archivehashes\\"
+Global_archivehashpath   = f"{AddonPath}\\hashlists\\archivehashes.json"
 
 Global_defaultgamepath   = "C:\Program Files (x86)\Steam\steamapps\common\Helldivers 2\data\ "
 Global_defaultgamepath   = Global_defaultgamepath[:len(Global_defaultgamepath) - 1]
@@ -62,6 +63,8 @@ Global_randomID = ""
 
 Global_latestVersionLink = "https://api.github.com/repos/Boxofbiscuits97/HD2SDK-CommunityEdition/releases/latest"
 Global_addonUpToDate = None
+
+Global_archieHashLink = "https://raw.githubusercontent.com/Boxofbiscuits97/HD2SDK-CommunityEdition/main/hashlists/archivehashes.json"
 
 #endregion
 
@@ -180,6 +183,15 @@ def CheckAddonUpToDate():
             PrettyPrint("Addon is outdated!")
     else:
         PrettyPrint(f"Request Failed, Cannot check latest Version. Status: {req.status_code}", "warn")
+
+def UpdateArchiveHashes():
+    req = requests.get(Global_archieHashLink)
+    if req.status_code == requests.codes.ok:
+        file = open(Global_archivehashpath, "w")
+        file.write(req.text)
+        PrettyPrint(f"Updated Archive Hashes File")
+    else:
+        PrettyPrint(f"Request Failed, Could not update Archive Hashes File", "warn")
 
 
 def PrettyPrint(msg, type="info"): # Inspired by FortnitePorting
@@ -783,29 +795,14 @@ def LoadHash(path, title):
             Global_ArchiveHashes.append([parts[0], title + parts[1].replace("\n", "")])
                 
 def LoadArchiveHashes():
-    HashFiles = os.listdir(Global_archivehashpath)
-    for filename in HashFiles:
-        if ".txt" in filename:
-            title = filename.replace(".txt", "") + ": "
-            filepath = Global_archivehashpath + filename
-            LoadHash(filepath, title)
-        else:
-            LoadSubFolderHash(filename)
+    file = open(Global_archivehashpath, "r")
+    data = json.load(file)
+
+    for title in data:
+        for innerKey in data[title]:
+            Global_ArchiveHashes.append([innerKey, title + ": " + data[title][innerKey]])
 
     Global_ArchiveHashes.append(["9ba626afa44a3aa3", "SDK: Base Patch Archive"])
-
-def LoadSubFolderHash(filename):
-    PrettyPrint(f"Sub: {filename}")
-    subFolderFiles = os.listdir(Global_archivehashpath + filename)
-    for subFileName in subFolderFiles:
-        if ".txt" not in subFileName:
-            PrettyPrint(f"Folder: {filename}")
-            LoadSubFolderHash(f"{filename}\\{subFileName}")
-        elif ".txt" in subFileName:
-            title = subFileName.replace(".txt", "") + ": "
-            filepath = f"{Global_archivehashpath}{filename}\\{subFileName}"
-            PrettyPrint(f"Load: {filepath} {subFileName}")
-            LoadHash(filepath, title)
 
 
 def GetEntryParentMaterialID(entry):
@@ -5198,6 +5195,7 @@ def register():
     CheckAddonUpToDate()
     InitializeConfig()
     LoadNormalPalette(Global_palettepath)
+    UpdateArchiveHashes()
     LoadTypeHashes()
     LoadNameHashes()
     LoadArchiveHashes()
