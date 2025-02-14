@@ -61,7 +61,7 @@ Global_SectionHeader = "---------- Helldivers 2 ----------"
 
 Global_randomID = ""
 
-Global_latestVersionLink = "https://api.github.com/repos/Boxofbiscuits97/HD2SDK-CommunityEdition/releases/latest"
+Global_latestVersionLink = "https://api.github.com/repos/YourlordAdam/HD2SDK-CommunityEdition/releases/latest"
 Global_addonUpToDate = None
 
 Global_archieHashLink = "https://raw.githubusercontent.com/Boxofbiscuits97/HD2SDK-CommunityEdition/main/hashlists/archivehashes.json"
