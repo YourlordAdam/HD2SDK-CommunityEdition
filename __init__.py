@@ -4844,7 +4844,10 @@ class HellDivers2ToolsPanel(Panel):
                 for EntryInfo in DisplayTocEntries:
                     Entry = EntryInfo[0]
                     if Entry.TypeID == Type.TypeID:
-                        if str(Entry.FileID).find(scene.Hd2ToolPanelSettings.SearchField) != -1:
+                        searchTerm = str(scene.Hd2ToolPanelSettings.SearchField)
+                        if searchTerm.startswith("0x"):
+                            searchTerm = str(hex_to_decimal(searchTerm))
+                        if str(Entry.FileID).find(searchTerm) != -1:
                             bFound = True
                 if not bFound: continue
 
@@ -4921,7 +4924,10 @@ class HellDivers2ToolsPanel(Panel):
                     PatchOnly = EntryInfo[1]
                     # Exclude entries that should not be drawn
                     if Entry.TypeID != Type.TypeID: continue
-                    if str(Entry.FileID).find(scene.Hd2ToolPanelSettings.SearchField) == -1: continue
+                    searchTerm = str(scene.Hd2ToolPanelSettings.SearchField)
+                    if searchTerm.startswith("0x"):
+                        searchTerm = str(hex_to_decimal(searchTerm))
+                    if str(Entry.FileID).find(searchTerm) == -1: continue
                     # Deal with friendly names
                     if len(Global_TocManager.SavedFriendlyNameIDs) > len(DrawChain) and Global_TocManager.SavedFriendlyNameIDs[len(DrawChain)] == Entry.FileID:
                         FriendlyName = Global_TocManager.SavedFriendlyNames[len(DrawChain)]
