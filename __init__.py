@@ -1,6 +1,6 @@
 bl_info = {
     "name": "Helldivers 2 SDK: Community Edition",
-    "version": (2, 4, 3),
+    "version": (2, 4, 4),
     "blender": (4, 0, 0),
     "category": "Import-Export",
 }
@@ -14,6 +14,7 @@ from copy import deepcopy
 from math import ceil
 from pathlib import Path
 import configparser
+import requests
 
 #import pyautogui 
 
@@ -58,6 +59,9 @@ Global_Foldouts = []
 Global_SectionHeader = "---------- Helldivers 2 ----------"
 
 Global_randomID = ""
+
+Global_latestVersionLink = "https://api.github.com/repos/Boxofbiscuits97/HD2SDK-CommunityEdition/releases/latest"
+Global_addonUpToDate = None
 
 #endregion
 
@@ -151,6 +155,32 @@ def CheckBlenderVersion():
     BlenderVersion = bpy.app.version
     OnCorrectBlenderVersion = (BlenderVersion[0] == 4 and BlenderVersion[1] <= 3)
     PrettyPrint(f"Blender Version: {BlenderVersion} Correct Version: {OnCorrectBlenderVersion}")
+
+def CheckAddonUpToDate():
+    PrettyPrint("Checking If Addon is up to date...")
+    currentVersion = bl_info["version"]
+
+    req = requests.get(Global_latestVersionLink)
+    if req.status_code == requests.codes.ok:
+        req = req.json()
+        latestVersion = req['tag_name'].replace("v", "")
+        latestVersion = (int(latestVersion.split(".")[0]), int(latestVersion.split(".")[1]), int(latestVersion.split(".")[2]))
+        
+        PrettyPrint(f"Current Version: {currentVersion}")
+        PrettyPrint(f"Latest Version: {latestVersion}")
+
+        global Global_addonUpToDate
+        global Global_latestAddonVersion
+        Global_addonUpToDate = latestVersion == currentVersion
+        Global_latestAddonVersion = f"{latestVersion[0]}.{latestVersion[1]}.{latestVersion[2]}"
+
+        if Global_addonUpToDate:
+            PrettyPrint("Addon is up to date!")
+        else:
+            PrettyPrint("Addon is outdated!")
+    else:
+        PrettyPrint(f"Request Failed, Cannot check latest Version. Status: {req.status_code}", "warn")
+
 
 def PrettyPrint(msg, type="info"): # Inspired by FortnitePorting
     reset = u"\u001b[0m"
@@ -4392,6 +4422,16 @@ class GithubOperator(Operator):
         webbrowser.open(url, new=0, autoraise=True)
         return{'FINISHED'}
     
+class LatestReleaseOperator(Operator):
+    bl_label  = "Update Helldivers 2 SDK"
+    bl_idname = "helldiver2.latest_release"
+    bl_description = "Opens The Github Page to the latest release"
+
+    def execute(self, context):
+        url = "https://github.com/Boxofbiscuits97/HD2SDK-CommunityEdition/releases/latest"
+        webbrowser.open(url, new=0, autoraise=True)
+        return{'FINISHED'}
+    
 #endregion
 
 #region Operators: Context Menu
@@ -4670,6 +4710,23 @@ class HellDivers2ToolsPanel(Panel):
         if bpy.app.version[1] > 0:
             row.label(text="Warning! Soft Supported Blender Version. Issues may Occur.", icon='ERROR')
 
+
+        row = layout.row()
+        row.alignment = 'CENTER'
+        global Global_addonUpToDate
+        global Global_latestAddonVersion
+
+        if Global_addonUpToDate == None:
+            row.label(text="Addon Failed to Check latest Version")
+        elif not Global_addonUpToDate:
+            row.label(text="Addon is Outdated!")
+            row.label(text=f"Latest Version: {Global_latestAddonVersion}")
+            row = layout.row()
+            row.alignment = 'CENTER'
+            row.scale_y = 2
+            row.operator("helldiver2.latest_release", icon = 'URL')
+            row.separator()
+
         # Draw Settings, Documentation and Spreadsheet
         mainbox = layout.box()
         row = mainbox.row()
@@ -4801,7 +4858,10 @@ class HellDivers2ToolsPanel(Panel):
                 for EntryInfo in DisplayTocEntries:
                     Entry = EntryInfo[0]
                     if Entry.TypeID == Type.TypeID:
-                        if str(Entry.FileID).find(scene.Hd2ToolPanelSettings.SearchField) != -1:
+                        searchTerm = str(scene.Hd2ToolPanelSettings.SearchField)
+                        if searchTerm.startswith("0x"):
+                            searchTerm = str(hex_to_decimal(searchTerm))
+                        if str(Entry.FileID).find(searchTerm) != -1:
                             bFound = True
                 if not bFound: continue
 
@@ -4878,7 +4938,10 @@ class HellDivers2ToolsPanel(Panel):
                     PatchOnly = EntryInfo[1]
                     # Exclude entries that should not be drawn
                     if Entry.TypeID != Type.TypeID: continue
-                    if str(Entry.FileID).find(scene.Hd2ToolPanelSettings.SearchField) == -1: continue
+                    searchTerm = str(scene.Hd2ToolPanelSettings.SearchField)
+                    if searchTerm.startswith("0x"):
+                        searchTerm = str(hex_to_decimal(searchTerm))
+                    if str(Entry.FileID).find(searchTerm) == -1: continue
                     # Deal with friendly names
                     if len(Global_TocManager.SavedFriendlyNameIDs) > len(DrawChain) and Global_TocManager.SavedFriendlyNameIDs[len(DrawChain)] == Entry.FileID:
                         FriendlyName = Global_TocManager.SavedFriendlyNames[len(DrawChain)]
@@ -5123,6 +5186,7 @@ classes = (
     CopyHexIDOperator,
     GenerateEntryIDOperator,
     SetMaterialTemplateOperator,
+    LatestReleaseOperator,
 )
 
 Global_TocManager = TocManager()
@@ -5131,6 +5195,7 @@ def register():
     if Global_CPPHelper == None: raise Exception("HDTool_Helper is required by the addon but failed to load!")
     if not os.path.exists(Global_texconvpath): raise Exception("Texconv is not found, please install Texconv in /deps/")
     CheckBlenderVersion()
+    CheckAddonUpToDate()
     InitializeConfig()
     LoadNormalPalette(Global_palettepath)
     LoadTypeHashes()
