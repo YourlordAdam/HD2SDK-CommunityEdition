@@ -66,6 +66,7 @@ Global_addonUpToDate = None
 
 Global_archieHashLink = "https://raw.githubusercontent.com/Boxofbiscuits97/HD2SDK-CommunityEdition/main/hashlists/archivehashes.json"
 
+Global_previousRandomHash = 0
 #endregion
 
 #region Common Hashes & Lookups
@@ -278,8 +279,12 @@ def SaveUnsavedEntries(self):
                     PrettyPrint(f"Saved {int(Entry.FileID)}")
 
 def RandomHash16():
-    r.seed(datetime.datetime.now().timestamp())
-    hash = r.randint(1, 0xffffffffffffffff)
+    global Global_previousRandomHash
+    hash = Global_previousRandomHash
+    while hash == Global_previousRandomHash:
+        r.seed(datetime.datetime.now().timestamp())
+        hash = r.randint(1, 0xffffffffffffffff)
+    Global_previousRandomHash = hash
     PrettyPrint(f"Generated hash: {hash}")
     return hash
 #endregion
@@ -4085,7 +4090,6 @@ class AddMaterialOperator(Operator):
 
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)
-    
 class SetMaterialTemplateOperator(Operator):
     bl_label = "Set Template"
     bl_idname = "helldiver2.material_set_template"
@@ -4645,7 +4649,7 @@ class HellDivers2ToolsPanel(Panel):
                     label = filepath.name if ddsPath != None else str(t)
                     if Entry.MaterialTemplate != None:
                         label = TextureTypeLookup[Entry.MaterialTemplate][i] + ": " + label
-                    row.operator("helldiver2.material_texture_entry", icon='FILE_IMAGE', text=label, emboss=False) 
+                    row.operator("helldiver2.material_texture_entry", icon='FILE_IMAGE', text=label, emboss=False).object_id = str(t)
                     # props = row.operator("helldiver2.material_settex", icon='FILEBROWSER', text="")
                     # props.object_id = str(Entry.FileID)
                     # props.tex_idx = i
@@ -5097,14 +5101,28 @@ class WM_MT_button_context(Menu):
 
         if SingleEntry:
             row.operator("helldiver2.archive_setfriendlyname", icon='WORDWRAP_ON', text="Set Friendly Name").object_id = str(Entry.FileID)
+            
+    def draw_material_editor_context_buttons(self, layout, FileID):
+        row = layout
+        row.separator()
+        row.label(text=Global_SectionHeader)
+        row.separator()
+        row.operator("helldiver2.copytest", icon='COPY_ID', text="Copy Entry ID").text = str(FileID)
+        row.operator("helldiver2.copytest", icon='COPY_ID', text="Copy Entry Hex ID").text = str(hex(int(FileID)))
     
     def draw(self, context):
         value = getattr(context, "button_operator", None)
-        if type(value).__name__ == "HELLDIVER2_OT_archive_entry":
+        menuName = type(value).__name__
+        if menuName == "HELLDIVER2_OT_archive_entry":
             layout = self.layout
             FileID = getattr(value, "object_id")
             TypeID = getattr(value, "object_typeid")
             self.draw_entry_buttons(layout, Global_TocManager.GetEntry(int(FileID), int(TypeID)))
+        elif menuName == "HELLDIVER2_OT_material_texture_entry":
+            layout = self.layout
+            FileID = getattr(value, "object_id")
+            self.draw_material_editor_context_buttons(layout, FileID)
+            
 
 #endregion
 
