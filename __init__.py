@@ -739,6 +739,15 @@ def Hash64(string):
     F = MemoryStream(output, IOMode = "read")
     return F.uint64(0)
 
+def GetParentMaterialEntryID(EntryID):
+    Entry = Global_TocManager.GetEntry(EntryID, MaterialID)
+    if Entry == None:
+        raise Exception(f"Entry does not exist. ID: {EntryID}")
+    
+    bytes = Entry.TocData[24:32]
+    data = int.from_bytes(bytes, byteorder='little')
+    return str(data)
+
 #endregion
 
 #region Functions: Initialization
@@ -5082,6 +5091,7 @@ class WM_MT_button_context(Menu):
             row.operator("helldiver2.material_save", icon='FILE_BLEND', text=SaveMaterialName).object_id = FileIDStr
             if SingleEntry:
                 row.operator("helldiver2.material_set_template", icon='MATSHADERBALL').entry_id = str(Entry.FileID)
+                row.operator("helldiver2.copytest", icon='COPY_ID', text="Copy Parent Material Entry ID").text = GetParentMaterialEntryID(Entry.FileID)
         # Draw copy ID buttons
         if SingleEntry:
             row.separator()
