@@ -1436,7 +1436,13 @@ class StingrayMaterial:
             variable.ID = f.uint32(variable.ID)
             variable.offset = f.uint32(variable.offset)
             variable.elementStride = f.uint32(variable.elementStride)
-            variable.values = [0 for n in range(variable.klass + 1)]  # Create an array with the length of the data which is one greater than the klass value
+            if f.IsReading():
+                variable.values = [0 for n in range(variable.klass + 1)]  # Create an array with the length of the data which is one greater than the klass value
+        
+        variableValueLocation = f.Location # Record and add all of the extra data that is skipped around during the variable offsets
+        if f.IsReading():self.RemainingData = f.bytes(self.RemainingData, len(f.Data) - f.tell())
+        if f.IsWriting():self.RemainingData = f.bytes(self.RemainingData)
+        f.Location = variableValueLocation
 
         for variable in self.ShaderVariables:
             oldLocation = f.Location
@@ -1445,8 +1451,6 @@ class StingrayMaterial:
                 variable.values[idx] = f.float32(variable.values[idx])
             f.Location = oldLocation
 
-        if f.IsReading():self.RemainingData = f.bytes(self.RemainingData, len(f.Data) - f.tell())
-        if f.IsWriting():self.RemainingData = f.bytes(self.RemainingData)
         self.EditorUpdate()
 
     def EditorUpdate(self):
@@ -3519,6 +3523,36 @@ class MaterialTextureEntryOperator(Operator):
 
     def invoke(self, context, event):
         return {'FINISHED'}
+    
+class MaterialShaderVariableEntryOperator(Operator):
+    bl_label = "Shader Variable"
+    bl_idname = "helldiver2.material_shader_variable"
+    bl_description = "Material Shader Variable"
+
+    object_id: StringProperty()
+    variable_index: bpy.props.IntProperty()
+    value_index: bpy.props.IntProperty()
+    value: bpy.props.FloatProperty(
+        name="Variable Value",
+        description="Enter a floating point number"
+    )
+
+    def draw(self, context):
+        layout = self.layout
+        layout.prop(self, "value")
+
+    def execute(self, context):
+        Entry = Global_TocManager.GetEntry(self.object_id, MaterialID)
+        if Entry:
+            Entry.LoadedData.ShaderVariables[self.variable_index].values[self.value_index] = self.value
+            PrettyPrint(f"Set value to: {self.value} at variable: {self.variable_index} value: {self.value_index} for material ID: {self.object_id}")
+        else:
+            self.report({'ERROR'}, f"Could not find entry for ID: {self.object_id}")
+            return {'CANCELLED'}
+        return {'FINISHED'}
+    
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self)
 
 class AddEntryToPatchOperator(Operator):
     bl_label = "Add To Patch"
@@ -4684,6 +4718,21 @@ class HellDivers2ToolsPanel(Panel):
                     # props = row.operator("helldiver2.material_settex", icon='FILEBROWSER', text="")
                     # props.object_id = str(Entry.FileID)
                     # props.tex_idx = i
+                for i, variable in enumerate(mat.ShaderVariables):
+                    row = layout.row(); row.separator(factor=2.0)
+                    split = row.split(factor=0.5)
+                    row = split.column()
+                    row.alignment = 'RIGHT'
+                    row.label(text=f"{variable.klassName}: {variable.ID}", icon='OPTIONS')
+                    row = split.column()
+                    row.alignment = 'LEFT'
+                    row = row.split(factor=1/len(variable.values))
+                    for j, value in enumerate(variable.values):
+                        ShaderVariable = row.operator("helldiver2.material_shader_variable", text=str(round(value, 2)))
+                        ShaderVariable.value = value
+                        ShaderVariable.object_id = str(Entry.FileID)
+                        ShaderVariable.variable_index = i
+                        ShaderVariable.value_index = j
 
     def draw_entry_buttons(self, box, row, Entry, PatchOnly):
         if Entry.TypeID == MeshID:
@@ -5207,6 +5256,7 @@ classes = (
     GenerateEntryIDOperator,
     SetMaterialTemplateOperator,
     LatestReleaseOperator,
+    MaterialShaderVariableEntryOperator,
 )
 
 Global_TocManager = TocManager()
