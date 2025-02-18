@@ -1,6 +1,6 @@
 bl_info = {
     "name": "Helldivers 2 SDK: Community Edition",
-    "version": (2, 5, 0),
+    "version": (2, 6, 0),
     "blender": (4, 0, 0),
     "category": "Import-Export",
 }
@@ -45,6 +45,9 @@ Global_filehashpath      = f"{AddonPath}\\hashlists\\filehash.txt"
 Global_friendlynamespath = f"{AddonPath}\\hashlists\\friendlynames.txt"
 
 Global_archivehashpath   = f"{AddonPath}\\hashlists\\archivehashes.json"
+Global_variablespath     =f"{AddonPath}\\hashlists\\shadervariables.txt"
+
+Global_ShaderVariables = {}
 
 Global_defaultgamepath   = "C:\Program Files (x86)\Steam\steamapps\common\Helldivers 2\data\ "
 Global_defaultgamepath   = Global_defaultgamepath[:len(Global_defaultgamepath) - 1]
@@ -66,6 +69,7 @@ Global_addonUpToDate = None
 
 Global_archieHashLink = "https://raw.githubusercontent.com/Boxofbiscuits97/HD2SDK-CommunityEdition/main/hashlists/archivehashes.json"
 
+Global_previousRandomHash = 0
 #endregion
 
 #region Common Hashes & Lookups
@@ -79,6 +83,7 @@ WwiseBankID = 6006249203084351385
 WwiseDepID  = 12624162998411505776
 WwiseStreamID  = 5785811756662211598
 WwiseMetaDataID  = 15351235653606224144
+ParticleID = 12112766700566326628
 
 TextureTypeLookup = {
     "original": (
@@ -292,8 +297,12 @@ def SaveUnsavedEntries(self):
                     PrettyPrint(f"Saved {int(Entry.FileID)}")
 
 def RandomHash16():
-    r.seed(datetime.datetime.now().timestamp())
-    hash = r.randint(1, 0xffffffffffffffff)
+    global Global_previousRandomHash
+    hash = Global_previousRandomHash
+    while hash == Global_previousRandomHash:
+        r.seed(datetime.datetime.now().timestamp())
+        hash = r.randint(1, 0xffffffffffffffff)
+    Global_previousRandomHash = hash
     PrettyPrint(f"Generated hash: {hash}")
     return hash
 #endregion
@@ -804,6 +813,12 @@ def LoadArchiveHashes():
 
     Global_ArchiveHashes.append(["9ba626afa44a3aa3", "SDK: Base Patch Archive"])
 
+def LoadShaderVariables():
+    global Global_ShaderVariables
+    file = open(Global_variablespath, "r")
+    text = file.read()
+    for line in text.splitlines():
+        Global_ShaderVariables[int(line.split()[1], 16)] = line.split()[0]
 
 def GetEntryParentMaterialID(entry):
     if entry.TypeID == MaterialID:
@@ -940,6 +955,8 @@ class TocEntry:
         if self.TypeID == MaterialID: callback = LoadStingrayMaterial
         if self.TypeID == CompositeMeshID: callback = LoadStingrayCompositeMesh
         if self.TypeID == Hash64("bones"): callback = LoadStingrayBones
+        if callback == None: callback = LoadStingrayDump
+
         if callback != None:
             self.LoadedData = callback(self.FileID, self.TocData, self.GpuData, self.StreamData, Reload, MakeBlendObject)
             if self.LoadedData == None: raise Exception("Archive Entry Load Failed")
@@ -969,14 +986,13 @@ class TocEntry:
                             PrettyPrint(self.Transforms)
                     except:
                         PrettyPrint(f"Object: {object.name} has No HD2 Properties")
-        else: raise Exception("Load Callback could not be found")
     # -- Write Data -- #
     def Save(self):
         if not self.IsLoaded: self.Load(True, False)
         if self.TypeID == MeshID: callback = SaveStingrayMesh
         if self.TypeID == TexID: callback = SaveStingrayTexture
         if self.TypeID == MaterialID: callback = SaveStingrayMaterial
-        if callback == None: raise Exception("Save Callback could not be found")
+        if callback == None: callback = SaveStingrayDump
 
         if self.IsLoaded:
             data = callback(self, self.FileID, self.TocData, self.GpuData, self.StreamData, self.LoadedData)
@@ -1395,13 +1411,27 @@ class TocManager():
 #endregion
 
 #region Classes and Functions: Stingray Materials
+class ShaderVariable:
+    klasses = {
+        0: "Scalar",
+        1: "Vector2",
+        2: "Vector3",
+        3: "Vector4",
+        12: "Other"
+    }
+    
+    def __init__(self):
+        self.klass = self.klassName = self.elements = self.ID = self.offset = self.elementStride = 0
+        self.values = []
+        self.name = ""
 
 class StingrayMaterial:
     def __init__(self):
-        self.undat1 = self.undat3 = self.undat4 = self.undat5 = self.RemainingData = bytearray()
-        self.EndOffset = self.undat2 = self.UnkID = self.NumTextures = self.NumUnk = 0
+        self.undat1 = self.undat3 = self.undat4 = self.undat5 = self.undat6 = self.RemainingData = bytearray()
+        self.EndOffset = self.undat2 = self.ParentMaterialID = self.NumTextures = self.NumVariables = self.VariableDataSize = 0
         self.TexUnks = []
         self.TexIDs  = []
+        self.ShaderVariables = []
 
         self.DEV_ShowEditor = False
         self.DEV_DDSPaths = []
@@ -1409,20 +1439,44 @@ class StingrayMaterial:
         self.undat1      = f.bytes(self.undat1, 12)
         self.EndOffset   = f.uint32(self.EndOffset)
         self.undat2      = f.uint64(self.undat2)
-        self.UnkID       = f.uint64(self.UnkID) # could be shader id?
+        self.ParentMaterialID= f.uint64(self.ParentMaterialID)
         self.undat3      = f.bytes(self.undat3, 32)
         self.NumTextures = f.uint32(self.NumTextures)
         self.undat4      = f.bytes(self.undat4, 36)
-        self.NumUnk      = f.uint32(self.NumUnk)
-        self.undat5      = f.bytes(self.undat5, 28)
+        self.NumVariables= f.uint32(self.NumVariables)
+        self.undat5      = f.bytes(self.undat5, 12)
+        self.VariableDataSize = f.uint32(self.VariableDataSize)
+        self.undat6      = f.bytes(self.undat6, 12)
         if f.IsReading():
             self.TexUnks = [0 for n in range(self.NumTextures)]
             self.TexIDs = [0 for n in range(self.NumTextures)]
+            self.ShaderVariables = [ShaderVariable() for n in range(self.NumVariables)]
         self.TexUnks = [f.uint32(TexUnk) for TexUnk in self.TexUnks]
         self.TexIDs  = [f.uint64(TexID) for TexID in self.TexIDs]
-
+        for variable in self.ShaderVariables:
+            variable.klass = f.uint32(variable.klass)
+            variable.klassName = ShaderVariable.klasses[variable.klass]
+            variable.elements = f.uint32(variable.elements)
+            variable.ID = f.uint32(variable.ID)
+            if variable.ID in Global_ShaderVariables:
+                variable.name = Global_ShaderVariables[variable.ID]
+            variable.offset = f.uint32(variable.offset)
+            variable.elementStride = f.uint32(variable.elementStride)
+            if f.IsReading():
+                variable.values = [0 for n in range(variable.klass + 1)]  # Create an array with the length of the data which is one greater than the klass value
+        
+        variableValueLocation = f.Location # Record and add all of the extra data that is skipped around during the variable offsets
         if f.IsReading():self.RemainingData = f.bytes(self.RemainingData, len(f.Data) - f.tell())
         if f.IsWriting():self.RemainingData = f.bytes(self.RemainingData)
+        f.Location = variableValueLocation
+
+        for variable in self.ShaderVariables:
+            oldLocation = f.Location
+            f.Location = f.Location + variable.offset
+            for idx in range(len(variable.values)):
+                variable.values[idx] = f.float32(variable.values[idx])
+            f.Location = oldLocation
+
         self.EditorUpdate()
 
     def EditorUpdate(self):
@@ -1926,6 +1980,31 @@ def LoadStingrayCompositeMesh(ID, TocData, GpuData, StreamData, Reload, MakeBlen
     StingrayCompositeMeshData = StingrayCompositeMesh()
     StingrayCompositeMeshData.Serialize(MemoryStream(TocData), MemoryStream(GpuData))
     return StingrayCompositeMeshData
+
+#endregion
+
+#region StingrayRawDump
+
+class StingrayRawDump:
+    def __init__(self):
+        return None
+
+    def Serialize(self, f):
+        return self
+
+def LoadStingrayDump(ID, TocData, GpuData, StreamData, Reload, MakeBlendObject):
+    StingrayDumpData = StingrayRawDump()
+    StingrayDumpData.Serialize(MemoryStream(TocData))
+    return StingrayDumpData
+
+def SaveStingrayDump(self, ID, TocData, GpuData, StreamData, LoadedData):
+    Toc = MemoryStream(IOMode="write")
+    Gpu = MemoryStream(IOMode="write")
+    Stream = MemoryStream(IOMode="write")
+
+    LoadedData.Serialize(Toc, Gpu, Stream)
+
+    return [Toc.Data, Gpu.Data, Stream.Data]
 
 #endregion
 
@@ -3470,6 +3549,36 @@ class MaterialTextureEntryOperator(Operator):
 
     def invoke(self, context, event):
         return {'FINISHED'}
+    
+class MaterialShaderVariableEntryOperator(Operator):
+    bl_label = "Shader Variable"
+    bl_idname = "helldiver2.material_shader_variable"
+    bl_description = "Material Shader Variable"
+
+    object_id: StringProperty()
+    variable_index: bpy.props.IntProperty()
+    value_index: bpy.props.IntProperty()
+    value: bpy.props.FloatProperty(
+        name="Variable Value",
+        description="Enter a floating point number"
+    )
+
+    def draw(self, context):
+        layout = self.layout
+        layout.prop(self, "value")
+
+    def execute(self, context):
+        Entry = Global_TocManager.GetEntry(self.object_id, MaterialID)
+        if Entry:
+            Entry.LoadedData.ShaderVariables[self.variable_index].values[self.value_index] = self.value
+            PrettyPrint(f"Set value to: {self.value} at variable: {self.variable_index} value: {self.value_index} for material ID: {self.object_id}")
+        else:
+            self.report({'ERROR'}, f"Could not find entry for ID: {self.object_id}")
+            return {'CANCELLED'}
+        return {'FINISHED'}
+    
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self)
 
 class AddEntryToPatchOperator(Operator):
     bl_label = "Add To Patch"
@@ -4099,7 +4208,6 @@ class AddMaterialOperator(Operator):
 
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)
-    
 class SetMaterialTemplateOperator(Operator):
     bl_label = "Set Template"
     bl_idname = "helldiver2.material_set_template"
@@ -4565,27 +4673,10 @@ class EntrySectionOperator(Operator):
 
     def execute(self, context):
         global Global_Foldouts
-        if self.type == str(MeshID):
-            bpy.context.scene.Hd2ToolPanelSettings.ShowMeshes = not bpy.context.scene.Hd2ToolPanelSettings.ShowMeshes
-        elif self.type == str(TexID):
-            bpy.context.scene.Hd2ToolPanelSettings.ShowTextures = not bpy.context.scene.Hd2ToolPanelSettings.ShowTextures
-        elif self.type == str(MaterialID):
-            bpy.context.scene.Hd2ToolPanelSettings.ShowMaterials = not bpy.context.scene.Hd2ToolPanelSettings.ShowMaterials
-        elif self.type == str(BoneID):
-            bpy.context.scene.Hd2ToolPanelSettings.ShowBones = not bpy.context.scene.Hd2ToolPanelSettings.ShowBones
-        elif self.type == str(WwiseBankID):
-            bpy.context.scene.Hd2ToolPanelSettings.ShowWwiseBank = not bpy.context.scene.Hd2ToolPanelSettings.ShowWwiseBank
-        elif self.type == str(WwiseDepID):
-            bpy.context.scene.Hd2ToolPanelSettings.ShowWwiseDep = not bpy.context.scene.Hd2ToolPanelSettings.ShowWwiseDep
-        elif self.type == str(WwiseStreamID):
-            bpy.context.scene.Hd2ToolPanelSettings.ShowWwiseStream = not bpy.context.scene.Hd2ToolPanelSettings.ShowWwiseStream
-        elif self.type == str(WwiseMetaDataID):
-            bpy.context.scene.Hd2ToolPanelSettings.ShowWwiseMetaData = not bpy.context.scene.Hd2ToolPanelSettings.ShowWwiseMetaData
-        else:
-            for i in range(len(Global_Foldouts)):
-                if Global_Foldouts[i][0] == str(self.type):
-                    Global_Foldouts[i][1] = not Global_Foldouts[i][1]
-                    PrettyPrint(f"Folding foldout: {Global_Foldouts[i]}")
+        for i in range(len(Global_Foldouts)):
+            if Global_Foldouts[i][0] == str(self.type):
+                Global_Foldouts[i][1] = not Global_Foldouts[i][1]
+                PrettyPrint(f"Folding foldout: {Global_Foldouts[i]}")
         return {'FINISHED'}
 #endregion
 
@@ -4606,18 +4697,8 @@ class Hd2ToolPanelSettings(PropertyGroup):
     LoadedArchives   : EnumProperty(name="LoadedArchives", items=LoadedArchives_callback)
     # Settings
     MenuExpanded     : BoolProperty(default = False)
-    ShowMeshes       : BoolProperty(name="Meshes", description = "Show Meshes", default = True)
-    ShowTextures     : BoolProperty(name="Textures", description = "Show Textures", default = True)
-    ShowMaterials    : BoolProperty(name="Materials", description = "Show Materials", default = True)
-
-    ShowBones        : BoolProperty(name="Bones", description = "Show Bones", default = False)
-    ShowWwiseBank    : BoolProperty(name="Wwise Bank", description = "Show WwiseBank", default = False)
-    ShowWwiseDep     : BoolProperty(name="Wwise Dep", description = "Show WwiseDep", default = False)
-    ShowWwiseStream  : BoolProperty(name="Wwise Stream", description = "Show WwiseStream", default = False)
-    ShowWwiseMetaData:  BoolProperty(name="Wwise MetaData", description = "Show WwiseMetaData", default = False)
 
     ShowExtras       : BoolProperty(name="Extra", description = "Show Extras", default = False)
-    ShowOthers       : BoolProperty(name="Other", description = "Show All Else", default = False)
 
     ImportMaterials  : BoolProperty(name="Import Materials", description = "Fully import materials by appending the textures utilized, otherwise create placeholders", default = True)
     ImportLods       : BoolProperty(name="Import LODs", description = "Import LODs", default = False)
@@ -4659,10 +4740,27 @@ class HellDivers2ToolsPanel(Panel):
                     label = filepath.name if ddsPath != None else str(t)
                     if Entry.MaterialTemplate != None:
                         label = TextureTypeLookup[Entry.MaterialTemplate][i] + ": " + label
-                    row.operator("helldiver2.material_texture_entry", icon='FILE_IMAGE', text=label, emboss=False) 
+                    row.operator("helldiver2.material_texture_entry", icon='FILE_IMAGE', text=label, emboss=False).object_id = str(t)
                     # props = row.operator("helldiver2.material_settex", icon='FILEBROWSER', text="")
                     # props.object_id = str(Entry.FileID)
                     # props.tex_idx = i
+                for i, variable in enumerate(mat.ShaderVariables):
+                    row = layout.row(); row.separator(factor=2.0)
+                    split = row.split(factor=0.5)
+                    row = split.column()
+                    row.alignment = 'RIGHT'
+                    name = variable.ID
+                    if variable.name != "": name = variable.name
+                    row.label(text=f"{variable.klassName}: {name}", icon='OPTIONS')
+                    row = split.column()
+                    row.alignment = 'LEFT'
+                    row = row.split(factor=1/len(variable.values))
+                    for j, value in enumerate(variable.values):
+                        ShaderVariable = row.operator("helldiver2.material_shader_variable", text=str(round(value, 2)))
+                        ShaderVariable.value = value
+                        ShaderVariable.object_id = str(Entry.FileID)
+                        ShaderVariable.variable_index = i
+                        ShaderVariable.value_index = j
 
     def draw_entry_buttons(self, box, row, Entry, PatchOnly):
         if Entry.TypeID == MeshID:
@@ -4736,7 +4834,6 @@ class HellDivers2ToolsPanel(Panel):
             row = mainbox.grid_flow(columns=2)
             row = mainbox.row(); row.separator(); row.label(text="Display Types"); box = row.box(); row = box.grid_flow(columns=1)
             row.prop(scene.Hd2ToolPanelSettings, "ShowExtras")
-            row.prop(scene.Hd2ToolPanelSettings, "ShowOthers")
             row = mainbox.row(); row.separator(); row.label(text="Import Options"); box = row.box(); row = box.grid_flow(columns=1)
             row.prop(scene.Hd2ToolPanelSettings, "ImportMaterials")
             row.prop(scene.Hd2ToolPanelSettings, "ImportLods")
@@ -4869,44 +4966,31 @@ class HellDivers2ToolsPanel(Panel):
                 EntryNum = 0
                 global Global_Foldouts
                 if Type.TypeID == MeshID:
-                    show = scene.Hd2ToolPanelSettings.ShowMeshes
                     type_icon = 'FILE_3D'
                 elif Type.TypeID == TexID:
-                    show = scene.Hd2ToolPanelSettings.ShowTextures
                     type_icon = 'FILE_IMAGE'
                 elif Type.TypeID == MaterialID:
-                    show = scene.Hd2ToolPanelSettings.ShowMaterials
-                    type_icon = 'MATERIAL'
-                elif Type.TypeID == BoneID:
-                    show = scene.Hd2ToolPanelSettings.ShowBones
-                    type_icon = 'BONE_DATA'
-                    if not showExtras: continue
-                elif Type.TypeID == WwiseBankID:
-                    show = scene.Hd2ToolPanelSettings.ShowWwiseBank
-                    type_icon = 'OUTLINER_DATA_SPEAKER'
-                    if not showExtras: continue
-                elif Type.TypeID == WwiseDepID:
-                    show = scene.Hd2ToolPanelSettings.ShowWwiseDep
-                    type_icon = 'OUTLINER_DATA_SPEAKER'
-                    if not showExtras: continue
-                elif Type.TypeID == WwiseStreamID:
-                    show = scene.Hd2ToolPanelSettings.ShowWwiseStream
-                    type_icon = 'OUTLINER_DATA_SPEAKER'
-                    if not showExtras: continue
-                elif Type.TypeID == WwiseMetaDataID:
-                    show = scene.Hd2ToolPanelSettings.ShowWwiseMetaData
-                    type_icon = 'OUTLINER_DATA_SPEAKER'
-                    if not showExtras: continue
+                    type_icon = 'MATERIAL' 
+                elif showExtras:
+                    if Type.TypeID == BoneID: type_icon = 'BONE_DATA'
+                    elif Type.TypeID == WwiseBankID:  type_icon = 'OUTLINER_DATA_SPEAKER'
+                    elif Type.TypeID == WwiseDepID: type_icon = 'OUTLINER_DATA_SPEAKER'
+                    elif Type.TypeID == WwiseStreamID:  type_icon = 'OUTLINER_DATA_SPEAKER'
+                    elif Type.TypeID == WwiseMetaDataID: type_icon = 'OUTLINER_DATA_SPEAKER'
+                    elif Type.TypeID == ParticleID: type_icon = 'PARTICLES'
                 else:
-                    if not scene.Hd2ToolPanelSettings.ShowOthers: continue
-                    for section in Global_Foldouts:
-                        if section[0] == str(Type.TypeID):
-                            show = section[1]
-                            break
-                    if show == None:
-                        foldout = [str(Type.TypeID), False]
-                        Global_Foldouts.append(foldout)
-                        PrettyPrint(f"Adding Foldout ID: {foldout}")
+                    continue
+                
+                for section in Global_Foldouts:
+                    if section[0] == str(Type.TypeID):
+                        show = section[1]
+                        break
+                if show == None:
+                    fold = False
+                    if Type.TypeID == MaterialID or Type.TypeID == TexID or Type.TypeID == MeshID: fold = True
+                    foldout = [str(Type.TypeID), fold]
+                    Global_Foldouts.append(foldout)
+                    PrettyPrint(f"Adding Foldout ID: {foldout}")
                     
 
                 fold_icon = "DOWNARROW_HLT" if show else "RIGHTARROW"
@@ -5092,6 +5176,8 @@ class WM_MT_button_context(Menu):
             row.operator("helldiver2.material_save", icon='FILE_BLEND', text=SaveMaterialName).object_id = FileIDStr
             if SingleEntry:
                 row.operator("helldiver2.material_set_template", icon='MATSHADERBALL').entry_id = str(Entry.FileID)
+                if Entry.LoadedData != None:
+                    row.operator("helldiver2.copytest", icon='COPY_ID', text="Copy Parent Material Entry ID").text = str(Entry.LoadedData.ParentMaterialID)
         # Draw copy ID buttons
         if SingleEntry:
             row.separator()
@@ -5111,14 +5197,28 @@ class WM_MT_button_context(Menu):
 
         if SingleEntry:
             row.operator("helldiver2.archive_setfriendlyname", icon='WORDWRAP_ON', text="Set Friendly Name").object_id = str(Entry.FileID)
+            
+    def draw_material_editor_context_buttons(self, layout, FileID):
+        row = layout
+        row.separator()
+        row.label(text=Global_SectionHeader)
+        row.separator()
+        row.operator("helldiver2.copytest", icon='COPY_ID', text="Copy Entry ID").text = str(FileID)
+        row.operator("helldiver2.copytest", icon='COPY_ID', text="Copy Entry Hex ID").text = str(hex(int(FileID)))
     
     def draw(self, context):
         value = getattr(context, "button_operator", None)
-        if type(value).__name__ == "HELLDIVER2_OT_archive_entry":
+        menuName = type(value).__name__
+        if menuName == "HELLDIVER2_OT_archive_entry":
             layout = self.layout
             FileID = getattr(value, "object_id")
             TypeID = getattr(value, "object_typeid")
             self.draw_entry_buttons(layout, Global_TocManager.GetEntry(int(FileID), int(TypeID)))
+        elif menuName == "HELLDIVER2_OT_material_texture_entry":
+            layout = self.layout
+            FileID = getattr(value, "object_id")
+            self.draw_material_editor_context_buttons(layout, FileID)
+            
 
 #endregion
 
@@ -5184,6 +5284,7 @@ classes = (
     GenerateEntryIDOperator,
     SetMaterialTemplateOperator,
     LatestReleaseOperator,
+    MaterialShaderVariableEntryOperator,
 )
 
 Global_TocManager = TocManager()
@@ -5199,6 +5300,7 @@ def register():
     LoadTypeHashes()
     LoadNameHashes()
     LoadArchiveHashes()
+    LoadShaderVariables()
     for cls in classes:
         bpy.utils.register_class(cls)
     Scene.Hd2ToolPanelSettings = PointerProperty(type=Hd2ToolPanelSettings)
