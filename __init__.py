@@ -740,15 +740,6 @@ def Hash64(string):
     F = MemoryStream(output, IOMode = "read")
     return F.uint64(0)
 
-def GetParentMaterialEntryID(EntryID):
-    Entry = Global_TocManager.GetEntry(EntryID, MaterialID)
-    if Entry == None:
-        raise Exception(f"Entry does not exist. ID: {EntryID}")
-    
-    bytes = Entry.TocData[24:32]
-    data = int.from_bytes(bytes, byteorder='little')
-    return str(data)
-
 #endregion
 
 #region Functions: Initialization
@@ -1401,7 +1392,7 @@ class TocManager():
 class StingrayMaterial:
     def __init__(self):
         self.undat1 = self.undat3 = self.undat4 = self.undat5 = self.RemainingData = bytearray()
-        self.EndOffset = self.undat2 = self.UnkID = self.NumTextures = self.NumUnk = 0
+        self.EndOffset = self.undat2 = self.ParentMaterialID = self.NumTextures = self.NumUnk = 0
         self.TexUnks = []
         self.TexIDs  = []
 
@@ -1411,7 +1402,7 @@ class StingrayMaterial:
         self.undat1      = f.bytes(self.undat1, 12)
         self.EndOffset   = f.uint32(self.EndOffset)
         self.undat2      = f.uint64(self.undat2)
-        self.UnkID       = f.uint64(self.UnkID) # could be shader id?
+        self.ParentMaterialID= f.uint64(self.ParentMaterialID)
         self.undat3      = f.bytes(self.undat3, 32)
         self.NumTextures = f.uint32(self.NumTextures)
         self.undat4      = f.bytes(self.undat4, 36)
@@ -5075,7 +5066,8 @@ class WM_MT_button_context(Menu):
             row.operator("helldiver2.material_save", icon='FILE_BLEND', text=SaveMaterialName).object_id = FileIDStr
             if SingleEntry:
                 row.operator("helldiver2.material_set_template", icon='MATSHADERBALL').entry_id = str(Entry.FileID)
-                row.operator("helldiver2.copytest", icon='COPY_ID', text="Copy Parent Material Entry ID").text = GetParentMaterialEntryID(Entry.FileID)
+                if Entry.LoadedData != None:
+                    row.operator("helldiver2.copytest", icon='COPY_ID', text="Copy Parent Material Entry ID").text = str(Entry.LoadedData.ParentMaterialID)
         # Draw copy ID buttons
         if SingleEntry:
             row.separator()
