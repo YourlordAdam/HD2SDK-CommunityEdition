@@ -80,6 +80,7 @@ WwiseBankID = 6006249203084351385
 WwiseDepID  = 12624162998411505776
 WwiseStreamID  = 5785811756662211598
 WwiseMetaDataID  = 15351235653606224144
+ParticleID = 12112766700566326628
 
 TextureTypeLookup = {
     "original": (
@@ -940,6 +941,8 @@ class TocEntry:
         if self.TypeID == MaterialID: callback = LoadStingrayMaterial
         if self.TypeID == CompositeMeshID: callback = LoadStingrayCompositeMesh
         if self.TypeID == Hash64("bones"): callback = LoadStingrayBones
+        if callback == None: callback = LoadStingrayDump
+
         if callback != None:
             self.LoadedData = callback(self.FileID, self.TocData, self.GpuData, self.StreamData, Reload, MakeBlendObject)
             if self.LoadedData == None: raise Exception("Archive Entry Load Failed")
@@ -969,14 +972,13 @@ class TocEntry:
                             PrettyPrint(self.Transforms)
                     except:
                         PrettyPrint(f"Object: {object.name} has No HD2 Properties")
-        else: raise Exception("Load Callback could not be found")
     # -- Write Data -- #
     def Save(self):
         if not self.IsLoaded: self.Load(True, False)
         if self.TypeID == MeshID: callback = SaveStingrayMesh
         if self.TypeID == TexID: callback = SaveStingrayTexture
         if self.TypeID == MaterialID: callback = SaveStingrayMaterial
-        if callback == None: raise Exception("Save Callback could not be found")
+        if callback == None: callback = SaveStingrayDump
 
         if self.IsLoaded:
             data = callback(self, self.FileID, self.TocData, self.GpuData, self.StreamData, self.LoadedData)
@@ -1926,6 +1928,31 @@ def LoadStingrayCompositeMesh(ID, TocData, GpuData, StreamData, Reload, MakeBlen
     StingrayCompositeMeshData = StingrayCompositeMesh()
     StingrayCompositeMeshData.Serialize(MemoryStream(TocData), MemoryStream(GpuData))
     return StingrayCompositeMeshData
+
+#endregion
+
+#region StingrayRawDump
+
+class StingrayRawDump:
+    def __init__(self):
+        return None
+
+    def Serialize(self, f):
+        return self
+
+def LoadStingrayDump(ID, TocData, GpuData, StreamData, Reload, MakeBlendObject):
+    StingrayDumpData = StingrayRawDump()
+    StingrayDumpData.Serialize(MemoryStream(TocData))
+    return StingrayDumpData
+
+def SaveStingrayDump(self, ID, TocData, GpuData, StreamData, LoadedData):
+    Toc = MemoryStream(IOMode="write")
+    Gpu = MemoryStream(IOMode="write")
+    Stream = MemoryStream(IOMode="write")
+
+    LoadedData.Serialize(Toc, Gpu, Stream)
+
+    return [Toc.Data, Gpu.Data, Stream.Data]
 
 #endregion
 
@@ -4564,27 +4591,10 @@ class EntrySectionOperator(Operator):
 
     def execute(self, context):
         global Global_Foldouts
-        if self.type == str(MeshID):
-            bpy.context.scene.Hd2ToolPanelSettings.ShowMeshes = not bpy.context.scene.Hd2ToolPanelSettings.ShowMeshes
-        elif self.type == str(TexID):
-            bpy.context.scene.Hd2ToolPanelSettings.ShowTextures = not bpy.context.scene.Hd2ToolPanelSettings.ShowTextures
-        elif self.type == str(MaterialID):
-            bpy.context.scene.Hd2ToolPanelSettings.ShowMaterials = not bpy.context.scene.Hd2ToolPanelSettings.ShowMaterials
-        elif self.type == str(BoneID):
-            bpy.context.scene.Hd2ToolPanelSettings.ShowBones = not bpy.context.scene.Hd2ToolPanelSettings.ShowBones
-        elif self.type == str(WwiseBankID):
-            bpy.context.scene.Hd2ToolPanelSettings.ShowWwiseBank = not bpy.context.scene.Hd2ToolPanelSettings.ShowWwiseBank
-        elif self.type == str(WwiseDepID):
-            bpy.context.scene.Hd2ToolPanelSettings.ShowWwiseDep = not bpy.context.scene.Hd2ToolPanelSettings.ShowWwiseDep
-        elif self.type == str(WwiseStreamID):
-            bpy.context.scene.Hd2ToolPanelSettings.ShowWwiseStream = not bpy.context.scene.Hd2ToolPanelSettings.ShowWwiseStream
-        elif self.type == str(WwiseMetaDataID):
-            bpy.context.scene.Hd2ToolPanelSettings.ShowWwiseMetaData = not bpy.context.scene.Hd2ToolPanelSettings.ShowWwiseMetaData
-        else:
-            for i in range(len(Global_Foldouts)):
-                if Global_Foldouts[i][0] == str(self.type):
-                    Global_Foldouts[i][1] = not Global_Foldouts[i][1]
-                    PrettyPrint(f"Folding foldout: {Global_Foldouts[i]}")
+        for i in range(len(Global_Foldouts)):
+            if Global_Foldouts[i][0] == str(self.type):
+                Global_Foldouts[i][1] = not Global_Foldouts[i][1]
+                PrettyPrint(f"Folding foldout: {Global_Foldouts[i]}")
         return {'FINISHED'}
 #endregion
 
@@ -4605,18 +4615,8 @@ class Hd2ToolPanelSettings(PropertyGroup):
     LoadedArchives   : EnumProperty(name="LoadedArchives", items=LoadedArchives_callback)
     # Settings
     MenuExpanded     : BoolProperty(default = False)
-    ShowMeshes       : BoolProperty(name="Meshes", description = "Show Meshes", default = True)
-    ShowTextures     : BoolProperty(name="Textures", description = "Show Textures", default = True)
-    ShowMaterials    : BoolProperty(name="Materials", description = "Show Materials", default = True)
-
-    ShowBones        : BoolProperty(name="Bones", description = "Show Bones", default = False)
-    ShowWwiseBank    : BoolProperty(name="Wwise Bank", description = "Show WwiseBank", default = False)
-    ShowWwiseDep     : BoolProperty(name="Wwise Dep", description = "Show WwiseDep", default = False)
-    ShowWwiseStream  : BoolProperty(name="Wwise Stream", description = "Show WwiseStream", default = False)
-    ShowWwiseMetaData:  BoolProperty(name="Wwise MetaData", description = "Show WwiseMetaData", default = False)
 
     ShowExtras       : BoolProperty(name="Extra", description = "Show Extras", default = False)
-    ShowOthers       : BoolProperty(name="Other", description = "Show All Else", default = False)
 
     ImportMaterials  : BoolProperty(name="Import Materials", description = "Fully import materials by appending the textures utilized, otherwise create placeholders", default = True)
     ImportLods       : BoolProperty(name="Import LODs", description = "Import LODs", default = False)
@@ -4735,7 +4735,6 @@ class HellDivers2ToolsPanel(Panel):
             row = mainbox.grid_flow(columns=2)
             row = mainbox.row(); row.separator(); row.label(text="Display Types"); box = row.box(); row = box.grid_flow(columns=1)
             row.prop(scene.Hd2ToolPanelSettings, "ShowExtras")
-            row.prop(scene.Hd2ToolPanelSettings, "ShowOthers")
             row = mainbox.row(); row.separator(); row.label(text="Import Options"); box = row.box(); row = box.grid_flow(columns=1)
             row.prop(scene.Hd2ToolPanelSettings, "ImportMaterials")
             row.prop(scene.Hd2ToolPanelSettings, "ImportLods")
@@ -4868,44 +4867,29 @@ class HellDivers2ToolsPanel(Panel):
                 EntryNum = 0
                 global Global_Foldouts
                 if Type.TypeID == MeshID:
-                    show = scene.Hd2ToolPanelSettings.ShowMeshes
                     type_icon = 'FILE_3D'
                 elif Type.TypeID == TexID:
-                    show = scene.Hd2ToolPanelSettings.ShowTextures
                     type_icon = 'FILE_IMAGE'
                 elif Type.TypeID == MaterialID:
-                    show = scene.Hd2ToolPanelSettings.ShowMaterials
-                    type_icon = 'MATERIAL'
-                elif Type.TypeID == BoneID:
-                    show = scene.Hd2ToolPanelSettings.ShowBones
-                    type_icon = 'BONE_DATA'
-                    if not showExtras: continue
-                elif Type.TypeID == WwiseBankID:
-                    show = scene.Hd2ToolPanelSettings.ShowWwiseBank
-                    type_icon = 'OUTLINER_DATA_SPEAKER'
-                    if not showExtras: continue
-                elif Type.TypeID == WwiseDepID:
-                    show = scene.Hd2ToolPanelSettings.ShowWwiseDep
-                    type_icon = 'OUTLINER_DATA_SPEAKER'
-                    if not showExtras: continue
-                elif Type.TypeID == WwiseStreamID:
-                    show = scene.Hd2ToolPanelSettings.ShowWwiseStream
-                    type_icon = 'OUTLINER_DATA_SPEAKER'
-                    if not showExtras: continue
-                elif Type.TypeID == WwiseMetaDataID:
-                    show = scene.Hd2ToolPanelSettings.ShowWwiseMetaData
-                    type_icon = 'OUTLINER_DATA_SPEAKER'
-                    if not showExtras: continue
+                    type_icon = 'MATERIAL' 
+                elif showExtras:
+                    if Type.TypeID == BoneID: type_icon = 'BONE_DATA'
+                    elif Type.TypeID == WwiseBankID:  type_icon = 'OUTLINER_DATA_SPEAKER'
+                    elif Type.TypeID == WwiseDepID: type_icon = 'OUTLINER_DATA_SPEAKER'
+                    elif Type.TypeID == WwiseStreamID:  type_icon = 'OUTLINER_DATA_SPEAKER'
+                    elif Type.TypeID == WwiseMetaDataID: type_icon = 'OUTLINER_DATA_SPEAKER'
+                    elif Type.TypeID == ParticleID: type_icon = 'PARTICLES'
                 else:
-                    if not scene.Hd2ToolPanelSettings.ShowOthers: continue
-                    for section in Global_Foldouts:
-                        if section[0] == str(Type.TypeID):
-                            show = section[1]
-                            break
-                    if show == None:
-                        foldout = [str(Type.TypeID), False]
-                        Global_Foldouts.append(foldout)
-                        PrettyPrint(f"Adding Foldout ID: {foldout}")
+                    continue
+                
+                for section in Global_Foldouts:
+                    if section[0] == str(Type.TypeID):
+                        show = section[1]
+                        break
+                if show == None:
+                    foldout = [str(Type.TypeID), False]
+                    Global_Foldouts.append(foldout)
+                    PrettyPrint(f"Adding Foldout ID: {foldout}")
                     
 
                 fold_icon = "DOWNARROW_HLT" if show else "RIGHTARROW"
