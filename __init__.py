@@ -1388,13 +1388,26 @@ class TocManager():
 #endregion
 
 #region Classes and Functions: Stingray Materials
+class ShaderVariable:
+    klasses = {
+        0: "Scalar",
+        1: "Vector2",
+        2: "Vector3",
+        3: "Vector4",
+        12: "Other"
+    }
+    
+    def __init__(self):
+        self.klass = self.klassName = self.elements = self.ID = self.offset = self.elementStride = 0
+        self.values = []
 
 class StingrayMaterial:
     def __init__(self):
-        self.undat1 = self.undat3 = self.undat4 = self.undat5 = self.RemainingData = bytearray()
-        self.EndOffset = self.undat2 = self.ParentMaterialID = self.NumTextures = self.NumUnk = 0
+        self.undat1 = self.undat3 = self.undat4 = self.undat5 = self.undat6 = self.RemainingData = bytearray()
+        self.EndOffset = self.undat2 = self.ParentMaterialID = self.NumTextures = self.NumVariables = self.VariableDataSize = 0
         self.TexUnks = []
         self.TexIDs  = []
+        self.ShaderVariables = []
 
         self.DEV_ShowEditor = False
         self.DEV_DDSPaths = []
@@ -1406,13 +1419,31 @@ class StingrayMaterial:
         self.undat3      = f.bytes(self.undat3, 32)
         self.NumTextures = f.uint32(self.NumTextures)
         self.undat4      = f.bytes(self.undat4, 36)
-        self.NumUnk      = f.uint32(self.NumUnk)
-        self.undat5      = f.bytes(self.undat5, 28)
+        self.NumVariables= f.uint32(self.NumVariables)
+        self.undat5      = f.bytes(self.undat5, 12)
+        self.VariableDataSize = f.uint32(self.VariableDataSize)
+        self.undat6      = f.bytes(self.undat6, 12)
         if f.IsReading():
             self.TexUnks = [0 for n in range(self.NumTextures)]
             self.TexIDs = [0 for n in range(self.NumTextures)]
+            self.ShaderVariables = [ShaderVariable() for n in range(self.NumVariables)]
         self.TexUnks = [f.uint32(TexUnk) for TexUnk in self.TexUnks]
         self.TexIDs  = [f.uint64(TexID) for TexID in self.TexIDs]
+        for variable in self.ShaderVariables:
+            variable.klass = f.uint32(variable.klass)
+            variable.klassName = ShaderVariable.klasses[variable.klass]
+            variable.elements = f.uint32(variable.elements)
+            variable.ID = f.uint32(variable.ID)
+            variable.offset = f.uint32(variable.offset)
+            variable.elementStride = f.uint32(variable.elementStride)
+            variable.values = [0 for n in range(variable.klass + 1)]  # Create an array with the length of the data which is one greater than the klass value
+
+        for variable in self.ShaderVariables:
+            oldLocation = f.Location
+            f.Location = f.Location + variable.offset
+            for idx in range(len(variable.values)):
+                variable.values[idx] = f.float32(variable.values[idx])
+            f.Location = oldLocation
 
         if f.IsReading():self.RemainingData = f.bytes(self.RemainingData, len(f.Data) - f.tell())
         if f.IsWriting():self.RemainingData = f.bytes(self.RemainingData)
