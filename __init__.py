@@ -45,6 +45,9 @@ Global_filehashpath      = f"{AddonPath}\\hashlists\\filehash.txt"
 Global_friendlynamespath = f"{AddonPath}\\hashlists\\friendlynames.txt"
 
 Global_archivehashpath   = f"{AddonPath}\\hashlists\\archivehashes.json"
+Global_variablespath     =f"{AddonPath}\\hashlists\\shadervariables.txt"
+
+Global_ShaderVariables = {}
 
 Global_defaultgamepath   = "C:\Program Files (x86)\Steam\steamapps\common\Helldivers 2\data\ "
 Global_defaultgamepath   = Global_defaultgamepath[:len(Global_defaultgamepath) - 1]
@@ -796,6 +799,12 @@ def LoadArchiveHashes():
 
     Global_ArchiveHashes.append(["9ba626afa44a3aa3", "SDK: Base Patch Archive"])
 
+def LoadShaderVariables():
+    global Global_ShaderVariables
+    file = open(Global_variablespath, "r")
+    text = file.read()
+    for line in text.splitlines():
+        Global_ShaderVariables[int(line.split()[1], 16)] = line.split()[0]
 
 def GetEntryParentMaterialID(entry):
     if entry.TypeID == MaterialID:
@@ -1400,6 +1409,7 @@ class ShaderVariable:
     def __init__(self):
         self.klass = self.klassName = self.elements = self.ID = self.offset = self.elementStride = 0
         self.values = []
+        self.name = ""
 
 class StingrayMaterial:
     def __init__(self):
@@ -1434,6 +1444,8 @@ class StingrayMaterial:
             variable.klassName = ShaderVariable.klasses[variable.klass]
             variable.elements = f.uint32(variable.elements)
             variable.ID = f.uint32(variable.ID)
+            if variable.ID in Global_ShaderVariables:
+                variable.name = Global_ShaderVariables[variable.ID]
             variable.offset = f.uint32(variable.offset)
             variable.elementStride = f.uint32(variable.elementStride)
             if f.IsReading():
@@ -4723,7 +4735,9 @@ class HellDivers2ToolsPanel(Panel):
                     split = row.split(factor=0.5)
                     row = split.column()
                     row.alignment = 'RIGHT'
-                    row.label(text=f"{variable.klassName}: {variable.ID}", icon='OPTIONS')
+                    name = variable.ID
+                    if variable.name != "": name = variable.name
+                    row.label(text=f"{variable.klassName}: {name}", icon='OPTIONS')
                     row = split.column()
                     row.alignment = 'LEFT'
                     row = row.split(factor=1/len(variable.values))
@@ -5272,6 +5286,7 @@ def register():
     LoadTypeHashes()
     LoadNameHashes()
     LoadArchiveHashes()
+    LoadShaderVariables()
     for cls in classes:
         bpy.utils.register_class(cls)
     Scene.Hd2ToolPanelSettings = PointerProperty(type=Hd2ToolPanelSettings)
