@@ -4909,7 +4909,9 @@ class HellDivers2ToolsPanel(Panel):
                         show = section[1]
                         break
                 if show == None:
-                    foldout = [str(Type.TypeID), False]
+                    fold = False
+                    if Type.TypeID == MaterialID or Type.TypeID == TexID or Type.TypeID == MeshID: fold = True
+                    foldout = [str(Type.TypeID), fold]
                     Global_Foldouts.append(foldout)
                     PrettyPrint(f"Adding Foldout ID: {foldout}")
                     
