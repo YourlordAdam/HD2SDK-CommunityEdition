@@ -1600,7 +1600,9 @@ def CreateAddonMaterial(ID, StingrayMat, mat, Entry):
         except:
             PrettyPrint(f"Failed to load texture {TextureID}. This is not fatal, but does mean that the materials in Blender will have empty image texture nodes", "warn")
             pass
-
+        
+        if "Normal" in name:
+            texImage.image.colorspace_settings.name = 'Non-Color'
         mat.node_tree.links.new(texImage.outputs['Color'], group.inputs[idx])
         idx +=1
 
