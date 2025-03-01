@@ -1,6 +1,6 @@
 bl_info = {
     "name": "Helldivers 2 SDK: Community Edition",
-    "version": (2, 6, 0),
+    "version": (2, 6, 1),
     "blender": (4, 0, 0),
     "category": "Import-Export",
 }
@@ -1614,6 +1614,9 @@ def CreateAddonMaterial(ID, StingrayMat, mat, Entry):
         except:
             PrettyPrint(f"Failed to load texture {TextureID}. This is not fatal, but does mean that the materials in Blender will have empty image texture nodes", "warn")
             pass
+        
+        if "Normal" in name:
+            texImage.image.colorspace_settings.name = 'Non-Color'
 
         mat.node_tree.links.new(texImage.outputs['Color'], group.inputs[idx])
         idx +=1
@@ -3579,6 +3582,52 @@ class MaterialShaderVariableEntryOperator(Operator):
     
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)
+    
+class MaterialShaderVariableColorEntryOperator(Operator):
+    bl_label = "Color Picker"
+    bl_idname = "helldiver2.material_shader_variable_color"
+    bl_description = "Material Shader Variable Color"
+
+    object_id: StringProperty()
+    variable_index: bpy.props.IntProperty()
+    color: bpy.props.FloatVectorProperty(
+                name=f"Color",
+                subtype="COLOR",
+                size=3,
+                min=0.0,
+                max=1.0,
+                default=(1.0, 1.0, 1.0)
+            )
+
+    def draw(self, context):
+        layout = self.layout
+        layout.prop(self, "color")
+
+    def execute(self, context):
+        Entry = Global_TocManager.GetEntry(self.object_id, MaterialID)
+        if Entry:
+            for idx in range(3):
+                Entry.LoadedData.ShaderVariables[self.variable_index].values[idx] = self.color[idx]
+            PrettyPrint(f"Set color to: {self.color}for material ID: {self.object_id}")
+        else:
+            self.report({'ERROR'}, f"Could not find entry for ID: {self.object_id}")
+            return {'CANCELLED'}
+        
+        # Redraw
+        for area in context.screen.areas:
+            if area.type == "VIEW_3D": area.tag_redraw()
+
+        return {'FINISHED'}
+    
+    def invoke(self, context, event):
+        Entry = Global_TocManager.GetEntry(self.object_id, MaterialID)
+        if Entry:
+            for idx in range(3):
+                self.color[idx] = Entry.LoadedData.ShaderVariables[self.variable_index].values[idx]
+        else:
+            self.report({'ERROR'}, f"Could not find entry for ID: {self.object_id}")
+            return {'CANCELLED'}
+        return context.window_manager.invoke_props_dialog(self)
 
 class AddEntryToPatchOperator(Operator):
     bl_label = "Add To Patch"
@@ -4754,13 +4803,19 @@ class HellDivers2ToolsPanel(Panel):
                     row.label(text=f"{variable.klassName}: {name}", icon='OPTIONS')
                     row = split.column()
                     row.alignment = 'LEFT'
-                    row = row.split(factor=1/len(variable.values))
+                    sections = len(variable.values)
+                    if sections == 3: sections = 4 # add an extra for the color picker
+                    row = row.split(factor=1/sections)
                     for j, value in enumerate(variable.values):
                         ShaderVariable = row.operator("helldiver2.material_shader_variable", text=str(round(value, 2)))
                         ShaderVariable.value = value
                         ShaderVariable.object_id = str(Entry.FileID)
                         ShaderVariable.variable_index = i
                         ShaderVariable.value_index = j
+                    if len(variable.values) == 3:
+                        ColorPicker = row.operator("helldiver2.material_shader_variable_color", text="", icon='EYEDROPPER')
+                        ColorPicker.object_id = str(Entry.FileID)
+                        ColorPicker.variable_index = i
 
     def draw_entry_buttons(self, box, row, Entry, PatchOnly):
         if Entry.TypeID == MeshID:
@@ -5285,6 +5340,7 @@ classes = (
     SetMaterialTemplateOperator,
     LatestReleaseOperator,
     MaterialShaderVariableEntryOperator,
+    MaterialShaderVariableColorEntryOperator,
 )
 
 Global_TocManager = TocManager()
