@@ -177,6 +177,8 @@ def CheckAddonUpToDate():
             PrettyPrint(f"Request Failed, Cannot check latest Version. Status: {req.status_code}", "warn")
     except requests.ConnectionError:
         PrettyPrint("Connection failed. Please check your network settings.", "warn")
+    except requests.HTTPError as err:
+        PrettyPrint(f"HTTP error occurred: {err}", "warn")
         
 def UpdateArchiveHashes():
     try:
@@ -190,6 +192,8 @@ def UpdateArchiveHashes():
             PrettyPrint(f"Request Failed, Could not update Archive Hashes File", "warn")
     except requests.ConnectionError:
         PrettyPrint("Connection failed. Please check your network settings.", "warn")
+    except requests.HTTPError as err:
+        PrettyPrint(f"HTTP error occurred: {err}", "warn")
 
 def PrettyPrint(msg, type="info"): # Inspired by FortnitePorting
     reset = u"\u001b[0m"
