@@ -1902,18 +1902,18 @@ def SaveStingrayTexture(self, ID, TocData, GpuData, StreamData, LoadedData):
 
 class StingrayBones:
     def __init__(self):
-        self.NumNames = self.NumUnk = 0
-        self.UnkArray1 = []; UnkArray2 = []; UnkArray3 = []; self.Names = []
+        self.NumNames = self.NumLODLevels = self.Unk1 = 0
+        self.UnkArray1 = []; self.BoneHashes = []; self.LODLevels = []; self.Names = []
     def Serialize(self, f):
         self.NumNames = f.uint32(self.NumNames)
-        self.NumUnk   = f.uint32(self.NumUnk)
+        self.NumLODLevels   = f.uint32(self.NumLODLevels)
         if f.IsReading():
-            self.UnkArray1 = [0 for n in range(self.NumUnk)]
-            self.UnkArray2 = [0 for n in range(self.NumNames)]
-            self.UnkArray3 = [0 for n in range(self.NumUnk)]
-        self.UnkArray1 = [f.uint32(value) for value in self.UnkArray1]
-        self.UnkArray2 = [f.uint32(value) for value in self.UnkArray2]
-        self.UnkArray3 = [f.uint32(value) for value in self.UnkArray3]
+            self.UnkArray1 = [0 for n in range(self.NumLODLevels)]
+            self.BoneHashes = [0 for n in range(self.NumNames)]
+            self.LODLevels = [0 for n in range(self.NumLODLevels)]
+        self.UnkArray1 = [f.float32(value) for value in self.UnkArray1]
+        self.BoneHashes = [f.uint32(value) for value in self.BoneHashes]
+        self.LODLevels = [f.uint32(value) for value in self.LODLevels]
         if f.IsReading():
             Data = f.read().split(b"\x00")
             self.Names = [dat.decode() for dat in Data]
@@ -2235,6 +2235,8 @@ class BoneInfo:
         if f.IsReading(): f.seek(RelPosition+self.RealIndicesOffset)
         else            : self.RealIndicesOffset = f.tell()-RelPosition
         self.RealIndices = [f.uint32(index) for index in self.RealIndices]
+        PrettyPrint("indicies")
+        PrettyPrint(self.RealIndices)
         # get unknown
         return self
 
@@ -2535,6 +2537,7 @@ class StingrayMeshFile:
             if Entry != None:
                 Global_TocManager.Load(Entry.FileID, Entry.TypeID)
                 self.BoneNames = Entry.LoadedData.Names
+                self.BoneHashes = Entry.LoadedData.BoneHashes
 
         # Get Customization data: READ ONLY
         if f.IsReading() and self.CustomizationInfoOffset > 0:
@@ -2582,6 +2585,25 @@ class StingrayMeshFile:
             else:
                 self.BoneInfoOffsets[boneinfo_idx] = f.tell() - self.BoneInfoOffset
             self.BoneInfoArray[boneinfo_idx] = self.BoneInfoArray[boneinfo_idx].Serialize(f, end_offset)
+            # Bone Hash linking
+            if f.IsReading(): 
+                PrettyPrint("Hashes")
+                PrettyPrint(f"Length of bone names: {len(self.BoneNames)}")
+                HashOffset = self.CustomizationInfoOffset - ((len(self.BoneNames) - 1) * 4) # this is a bad work around as we can't always get the bone names since some meshes don't have a bone file listed
+                PrettyPrint(f"Hash Offset: {HashOffset}")
+                f.seek(HashOffset)
+                self.MeshBoneHashes = [0 for n in range(len(self.BoneNames))]
+                self.MeshBoneHashes = [f.uint32(Hash) for Hash in self.MeshBoneHashes]
+                PrettyPrint(self.MeshBoneHashes)
+                for index in self.BoneInfoArray[boneinfo_idx].RealIndices:
+                    BoneInfoHash = self.MeshBoneHashes[index]
+                    for index in range(len(self.BoneHashes)):
+                        if self.BoneHashes[index] == BoneInfoHash:
+                            BoneName = self.BoneNames[index]
+                            PrettyPrint(f"Index: {index}")
+                            PrettyPrint(f"Bone: {BoneName}")
+                            continue
+
 
         # Stream Info
         if self.StreamInfoOffset != 0:
