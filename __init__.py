@@ -1781,6 +1781,7 @@ class StingrayTexture:
         self.Width      = 0
         self.Height     = 0
         self.NumMipMaps = 0
+        self.ArraySize  = 0
     def Serialize(self, Toc, Gpu, Stream):
         # clear header, so we dont have to deal with the .stream file
         if Toc.IsWriting():
@@ -1803,6 +1804,17 @@ class StingrayTexture:
             else:
                 self.rawTex = Gpu.Data
 
+    def ToDDSArray(self):
+        modifiedHeader = self.ddsHeader[:140] + bytes([1]) + self.ddsHeader[141:]
+        TextureArray = []
+        dataLength = len(self.rawTex) / self.ArraySize
+        for idx in range(self.ArraySize):
+            startIndex = int(dataLength * idx)
+            endIndex = int(startIndex + dataLength)
+            dds = modifiedHeader + self.rawTex[startIndex:endIndex:]
+            TextureArray.append(dds)
+        return TextureArray
+        
     def ToDDS(self):
         return self.ddsHeader + self.rawTex
     
@@ -1824,6 +1836,9 @@ class StingrayTexture:
         self.NumMipMaps = dds.uint32(0)
         dds.seek(128)
         self.Format = DXGI_FORMAT(dds.uint32(0))
+        dds.seek(140)
+        self.ArraySize = dds.uint32(0)
+        PrettyPrint(f"DDS Array Size: {self.ArraySize}")
     
     def CalculateGpuMipmaps(self):
         Stride = DXGI_FORMAT_SIZE(self.Format) / 16
@@ -4066,17 +4081,22 @@ class ExportTexturePNGOperator(Operator, ExportHelper):
         Entry = Global_TocManager.GetEntry(int(self.object_id), TexID)
         if Entry != None:
             tempdir = tempfile.gettempdir()
-            filename = self.filepath.split(Global_backslash)[-1]
-            directory = self.filepath.replace(filename, "")
-            filename = filename.replace(".png", "")
-            dds_path = f"{tempdir}\\{filename}.dds"
-            with open(dds_path, 'w+b') as f:
-                f.write(Entry.LoadedData.ToDDS())
-            subprocess.run([Global_texconvpath, "-y", "-o", directory, "-ft", "png", "-f", "R8G8B8A8_UNORM", dds_path])
-            if os.path.isfile(self.filepath):
-                self.report({'INFO'}, f"Saved PNG Texture to: {self.filepath}")
-            else:
-                self.report({'ERROR'}, f"Failed to Save Texture: {self.filepath}")
+            for i in range(Entry.LoadedData.ArraySize):
+                filename = self.filepath.split(Global_backslash)[-1]
+                directory = self.filepath.replace(filename, "")
+                filename = filename.replace(".png", "")
+                layer = "" if Entry.LoadedData.ArraySize == 1 else f"_layer{i}"
+                dds_path = f"{tempdir}\\{filename}{layer}.dds"
+                with open(dds_path, 'w+b') as f:
+                    if Entry.LoadedData.ArraySize == 1:
+                        f.write(Entry.LoadedData.ToDDS())
+                    else:
+                        f.write(Entry.LoadedData.ToDDSArray()[i])
+                subprocess.run([Global_texconvpath, "-y", "-o", directory, "-ft", "png", "-f", "R8G8B8A8_UNORM", dds_path])
+                if os.path.isfile(dds_path):
+                    self.report({'INFO'}, f"Saved PNG Texture to: {dds_path}")
+                else:
+                    self.report({'ERROR'}, f"Failed to Save Texture: {dds_path}")
         return{'FINISHED'}
     
     def invoke(self, context, event):
