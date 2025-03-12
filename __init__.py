@@ -70,6 +70,8 @@ Global_addonUpToDate = None
 Global_archieHashLink = "https://raw.githubusercontent.com/Boxofbiscuits97/HD2SDK-CommunityEdition/main/hashlists/archivehashes.json"
 
 Global_previousRandomHash = 0
+
+Global_BoneNames = {}
 #endregion
 
 #region Common Hashes & Lookups
@@ -508,7 +510,7 @@ def NameFromMesh(mesh, id, customization_info, bone_names, use_sufix=True):
 
     return name
 
-def CreateModel(model, id, customization_info, bone_names):
+def CreateModel(model, id, customization_info, bone_names, transform_info, bone_info):
     if len(model) < 1: return
     # Make collection
     old_collection = bpy.context.collection
@@ -609,7 +611,15 @@ def CreateModel(model, id, customization_info, bone_names):
                     weight_value = weights[weight_idx]
                     bone_index   = indices[weight_idx]
                     #bone_index   = mesh.DEV_BoneInfo.GetRealIndex(bone_index)
-                    group_name   = str(group_index) + "_" + str(bone_index)
+                    group_name = str(group_index) + "_" + str(bone_index)
+                    if not bpy.context.scene.Hd2ToolPanelSettings.LegacyWeightNames:
+                        hashIndex = bone_info[mesh.LodIndex].RealIndices[bone_index] - 1
+                        boneHash = transform_info.NameHashes[hashIndex]
+                        global Global_BoneNames
+                        if boneHash in Global_BoneNames:
+                            group_name = Global_BoneNames[boneHash]
+                        else:
+                            group_name = str(boneHash)
                     if group_name not in created_groups:
                         created_groups.append(group_name)
                         new_vertex_group = new_object.vertex_groups.new(name=str(group_name))
@@ -1932,11 +1942,24 @@ class StingrayBones:
         if f.IsReading():
             Data = f.read().split(b"\x00")
             self.Names = [dat.decode() for dat in Data]
+            if self.Names[-1] == '':
+                self.Names.pop() # remove extra empty string element
         else:
             Data = b""
             for string in self.Names:
                 Data += string.encode() + b"\x00"
             f.write(Data)
+
+        # add to global bone hashes
+        if f.IsReading():
+            PrettyPrint("Adding Bone Hashes to global list")
+            global Global_BoneNames
+            if len(self.BoneHashes) == len(self.Names):
+                for idx in range(len(self.BoneHashes)):
+                    Global_BoneNames[self.BoneHashes[idx]] = self.Names[idx]
+            else:
+                PrettyPrint(f"Failed to add bone hashes as list length is misaligned. Hashes Length: {len(self.BoneHashes)} Names Length: {len(self.Names)} Hashes: {self.BoneHashes} Names: {self.Names}", "error")
+            PrettyPrint(Global_BoneNames)
         return self
 
 def LoadStingrayBones(ID, TocData, GpuData, StreamData, Reload, MakeBlendObject):
@@ -2048,6 +2071,8 @@ class StingrayLocalTransform: # Stingray Local Transform: https://help.autodesk.
         self.pos   = [0,0,0]
         self.scale = [1,1,1]
         self.dummy = 0 # Force 16 byte alignment
+        self.Incriment = self.ParentBone = 0
+
     def Serialize(self, f):
         self.rot    = self.rot.Serialize(f)
         self.pos    = f.vec3_float(self.pos)
@@ -2059,12 +2084,18 @@ class StingrayLocalTransform: # Stingray Local Transform: https://help.autodesk.
         self.pos    = f.vec3_float(self.pos)
         self.dummy  = f.float32(self.dummy)
         return self
+    def SerializeTransformEntry(self, f):
+        self.Incriment = f.uint16(self.Incriment)
+        self.ParentBone = f.uint16(self.ParentBone)
+        return self
 
 class TransformInfo: # READ ONLY
     def __init__(self):
         self.NumTransforms = 0
         self.Transforms = []
         self.PositionTransforms = []
+        self.TransfromEntries = []
+        self.NameHashes = []
     def Serialize(self, f):
         if f.IsWriting():
             raise Exception("This struct is read only (write not implemented)")
@@ -2072,6 +2103,9 @@ class TransformInfo: # READ ONLY
         f.seek(f.tell()+12)
         self.Transforms = [StingrayLocalTransform().Serialize(f) for n in range(self.NumTransforms)]
         self.PositionTransforms = [StingrayLocalTransform().SerializeV2(f) for n in range(self.NumTransforms)]
+        self.TransfromEntries = [StingrayLocalTransform().SerializeTransformEntry(f) for n in range(self.NumTransforms)]
+        self.NameHashes = [f.uint32(n) for n in range(self.NumTransforms)]
+        PrettyPrint(f"hashes: {self.NameHashes}")
         for n in range(self.NumTransforms):
             self.Transforms[n].pos = self.PositionTransforms[n].pos
 
@@ -2601,23 +2635,23 @@ class StingrayMeshFile:
                 self.BoneInfoOffsets[boneinfo_idx] = f.tell() - self.BoneInfoOffset
             self.BoneInfoArray[boneinfo_idx] = self.BoneInfoArray[boneinfo_idx].Serialize(f, end_offset)
             # Bone Hash linking
-            if f.IsReading(): 
-                PrettyPrint("Hashes")
-                PrettyPrint(f"Length of bone names: {len(self.BoneNames)}")
-                HashOffset = self.CustomizationInfoOffset - ((len(self.BoneNames) - 1) * 4) # this is a bad work around as we can't always get the bone names since some meshes don't have a bone file listed
-                PrettyPrint(f"Hash Offset: {HashOffset}")
-                f.seek(HashOffset)
-                self.MeshBoneHashes = [0 for n in range(len(self.BoneNames))]
-                self.MeshBoneHashes = [f.uint32(Hash) for Hash in self.MeshBoneHashes]
-                PrettyPrint(self.MeshBoneHashes)
-                for index in self.BoneInfoArray[boneinfo_idx].RealIndices:
-                    BoneInfoHash = self.MeshBoneHashes[index]
-                    for index in range(len(self.BoneHashes)):
-                        if self.BoneHashes[index] == BoneInfoHash:
-                            BoneName = self.BoneNames[index]
-                            PrettyPrint(f"Index: {index}")
-                            PrettyPrint(f"Bone: {BoneName}")
-                            continue
+            # if f.IsReading(): 
+            #     PrettyPrint("Hashes")
+            #     PrettyPrint(f"Length of bone names: {len(self.BoneNames)}")
+            #     HashOffset = self.CustomizationInfoOffset - ((len(self.BoneNames) - 1) * 4) # this is a bad work around as we can't always get the bone names since some meshes don't have a bone file listed
+            #     PrettyPrint(f"Hash Offset: {HashOffset}")
+            #     f.seek(HashOffset)
+            #     self.MeshBoneHashes = [0 for n in range(len(self.BoneNames))]
+            #     self.MeshBoneHashes = [f.uint32(Hash) for Hash in self.MeshBoneHashes]
+            #     PrettyPrint(self.MeshBoneHashes)
+            #     for index in self.BoneInfoArray[boneinfo_idx].RealIndices:
+            #         BoneInfoHash = self.MeshBoneHashes[index]
+            #         for index in range(len(self.BoneHashes)):
+            #             if self.BoneHashes[index] == BoneInfoHash:
+            #                 BoneName = self.BoneNames[index]
+            #                 PrettyPrint(f"Index: {index}")
+            #                 PrettyPrint(f"Bone: {BoneName}")
+            #                 continue
 
 
         # Stream Info
@@ -3007,7 +3041,7 @@ def LoadStingrayMesh(ID, TocData, GpuData, StreamData, Reload, MakeBlendObject):
     toc  = MemoryStream(TocData)
     gpu  = MemoryStream(GpuData)
     StingrayMesh = StingrayMeshFile().Serialize(toc, gpu)
-    if MakeBlendObject: CreateModel(StingrayMesh.RawMeshes, str(ID), StingrayMesh.CustomizationInfo, StingrayMesh.BoneNames)
+    if MakeBlendObject: CreateModel(StingrayMesh.RawMeshes, str(ID), StingrayMesh.CustomizationInfo, StingrayMesh.BoneNames, StingrayMesh.TransformInfo, StingrayMesh.BoneInfoArray)
     return StingrayMesh
 
 def SaveStingrayMesh(self, ID, TocData, GpuData, StreamData, StingrayMesh):
@@ -4808,6 +4842,7 @@ class Hd2ToolPanelSettings(PropertyGroup):
     UnloadPatches         : BoolProperty(name="Unload Previous Patches", description="Unload Previous Patches when bulk loading")
 
     SaveNonSDKMaterials   : BoolProperty(name="Save Non-SDK Materials", description="Toggle if non-SDK materials should be autosaved when saving a mesh", default = False)
+    LegacyWeightNames     : BoolProperty(name="Legacy Weight Names", description="Brings back the old naming system for vertex groups using the X_Y schema", default = False)
 
 class HellDivers2ToolsPanel(Panel):
     bl_label = f"Helldivers 2 SDK: Community Edition v{bl_info['version'][0]}.{bl_info['version'][1]}.{bl_info['version'][2]}"
@@ -4939,8 +4974,9 @@ class HellDivers2ToolsPanel(Panel):
             row.prop(scene.Hd2ToolPanelSettings, "Force2UVs")
             row.prop(scene.Hd2ToolPanelSettings, "Force1Group")
             row.prop(scene.Hd2ToolPanelSettings, "AutoLods")
-            row = mainbox.row(); row.separator(); row.label(text="Save Options"); box = row.box(); row = box.grid_flow(columns=1)
+            row = mainbox.row(); row.separator(); row.label(text="Other Options"); box = row.box(); row = box.grid_flow(columns=1)
             row.prop(scene.Hd2ToolPanelSettings, "SaveNonSDKMaterials")
+            row.prop(scene.Hd2ToolPanelSettings, "LegacyWeightNames")
             #Custom Searching tools
             row = mainbox.row(); row.separator(); row.label(text="Research Tools"); box = row.box(); row = box.grid_flow(columns=1)
             # Draw Bulk Loader Extras
