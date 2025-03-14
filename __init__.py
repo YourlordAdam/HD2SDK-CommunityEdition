@@ -45,7 +45,8 @@ Global_filehashpath      = f"{AddonPath}\\hashlists\\filehash.txt"
 Global_friendlynamespath = f"{AddonPath}\\hashlists\\friendlynames.txt"
 
 Global_archivehashpath   = f"{AddonPath}\\hashlists\\archivehashes.json"
-Global_variablespath     =f"{AddonPath}\\hashlists\\shadervariables.txt"
+Global_variablespath     = f"{AddonPath}\\hashlists\\shadervariables.txt"
+Global_bonehashpath      = f"{AddonPath}\\hashlists\\bonehash.txt"
 
 Global_ShaderVariables = {}
 
@@ -825,6 +826,13 @@ def LoadShaderVariables():
     text = file.read()
     for line in text.splitlines():
         Global_ShaderVariables[int(line.split()[1], 16)] = line.split()[0]
+
+def LoadBoneHashes():
+    global Global_BoneNames
+    file = open(Global_bonehashpath, "r")
+    text = file.read()
+    for line in text.splitlines():
+        Global_BoneNames[int(line.split()[0])] = line.split()[1]
 
 def GetEntryParentMaterialID(entry):
     if entry.TypeID == MaterialID:
@@ -1848,7 +1856,6 @@ class StingrayTexture:
         self.Format = DXGI_FORMAT(dds.uint32(0))
         dds.seek(140)
         self.ArraySize = dds.uint32(0)
-        PrettyPrint(f"DDS Array Size: {self.ArraySize}")
     
     def CalculateGpuMipmaps(self):
         Stride = DXGI_FORMAT_SIZE(self.Format) / 16
@@ -1959,7 +1966,6 @@ class StingrayBones:
                     Global_BoneNames[self.BoneHashes[idx]] = self.Names[idx]
             else:
                 PrettyPrint(f"Failed to add bone hashes as list length is misaligned. Hashes Length: {len(self.BoneHashes)} Names Length: {len(self.Names)} Hashes: {self.BoneHashes} Names: {self.Names}", "error")
-            PrettyPrint(Global_BoneNames)
         return self
 
 def LoadStingrayBones(ID, TocData, GpuData, StreamData, Reload, MakeBlendObject):
@@ -5431,6 +5437,7 @@ def register():
     LoadNameHashes()
     LoadArchiveHashes()
     LoadShaderVariables()
+    LoadBoneHashes()
     for cls in classes:
         bpy.utils.register_class(cls)
     Scene.Hd2ToolPanelSettings = PointerProperty(type=Hd2ToolPanelSettings)
