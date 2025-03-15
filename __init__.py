@@ -1,5 +1,5 @@
 bl_info = {
-    "name": "Helldivers 2 SDK: Community Edition",
+    "name": "Helldivers 2 SDK: Community Edition - Adam Edits",
     "version": (2, 6, 1),
     "blender": (4, 0, 0),
     "category": "Import-Export",
@@ -424,7 +424,7 @@ def GetMeshData(og_object):
     normals = NormalsFromPalette(normals)
     # get uvs
     for uvlayer in object.data.uv_layers:
-        if len(uvs) >= 3:
+        if len(uvs) >= 4:
             break
         texCoord = [[0,0] for vert in mesh.vertices]
         for face in object.data.polygons:
