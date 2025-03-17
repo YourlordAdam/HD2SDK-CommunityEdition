@@ -214,7 +214,8 @@
         "afac01a32ebc55ba": "Emblem of Freedom"
     },
     "Environment": { 
-        "fc5b6bff0db90aab": "Super Destroyer Interior" 
+        "fc5b6bff0db90aab": "Super Destroyer Interior 1" ,
+        "18235e0c9ec0e636": "Super Destroyer Interior 2"
     },
     
     "Illuminate": {
