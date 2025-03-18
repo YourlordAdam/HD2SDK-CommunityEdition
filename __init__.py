@@ -87,6 +87,7 @@ WwiseDepID  = 12624162998411505776
 WwiseStreamID  = 5785811756662211598
 WwiseMetaDataID  = 15351235653606224144
 ParticleID = 12112766700566326628
+AnimationID = 10600967118105529382
 
 TextureTypeLookup = {
     "original": (
@@ -5113,6 +5114,7 @@ class HellDivers2ToolsPanel(Panel):
                     elif Type.TypeID == WwiseStreamID:  type_icon = 'OUTLINER_DATA_SPEAKER'
                     elif Type.TypeID == WwiseMetaDataID: type_icon = 'OUTLINER_DATA_SPEAKER'
                     elif Type.TypeID == ParticleID: type_icon = 'PARTICLES'
+                    elif Type.TypeID == AnimationID: type_icon = 'ARMATURE_DATA'
                 else:
                     continue
                 
