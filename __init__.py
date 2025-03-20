@@ -4664,7 +4664,45 @@ class LatestReleaseOperator(Operator):
         url = "https://github.com/Boxofbiscuits97/HD2SDK-CommunityEdition/releases/latest"
         webbrowser.open(url, new=0, autoraise=True)
         return{'FINISHED'}
-    
+
+class MeshFixOperator(Operator):
+    bl_label = "Repatch Meshes"
+    bl_idname = "helldiver2.meshfixtool"
+    bl_description = "Auto-fixes meshes in the currently loaded patch. Warning, this may take some time."
+
+    def execute(self, context):
+        if PatchesNotLoaded(self):
+            return {'CANCELLED'}
+        # for archive in Global_ArchiveHashes:
+        #     ID = archive[0]
+        #     path = Global_gamepath + ID
+        #     Global_TocManager.LoadArchive(str(path), True)
+        numMeshesRepatched = 0
+        for entry in Global_TocManager.ActivePatch.TocEntries:
+            if entry.TypeID != MeshID:
+                PrettyPrint(f"Skipping {entry.FileID} as it is not a mesh entry")
+                continue
+            fileID = entry.FileID
+            typeID = entry.TypeID
+            entry.Load()
+            Global_TocManager.RemoveEntryFromPatch(fileID, typeID)
+            Entry = Global_TocManager.GetEntry(fileID, typeID)
+            if Entry == None:
+                self.report({'ERROR'}, f"{entry.FileID}'s archive is not loaded! Make sure it's archive is loaded!")
+                Global_TocManager.AddNewEntryToPatch(entry) # add back the old entry we deleted
+                return {'CANCELLED'}
+            numMeshesRepatched += 1
+            collection = bpy.data.collections.new(f"MeshFix_{entry.FileID}")
+            bpy.context.collection = collection
+            # bpy.context.scene.collection.children.link(collection)
+            # layer_collection = bpy.context.view_layer.layer_collection.children[collection.name]
+            # bpy.context.view_layer.active_layer_collection = layer_collection
+            Global_TocManager.Save(fileID, typeID)
+            for obj in collection.objects:
+                bpy.data.objects.remove(obj)
+            bpy.data.collections.remove(collection)
+        PrettyPrint(f"Repatched {numMeshesRepatched} meshes.")
+        return{'FINISHED'}
 #endregion
 
 #region Operators: Context Menu
@@ -4842,14 +4880,14 @@ class Hd2ToolPanelSettings(PropertyGroup):
     SearchField      : StringProperty(default = "")
 
     # Tools
-    EnableTools           : BoolProperty(name="Research Tools", description = "Custom Archive Searching Tools", default = False)
+    EnableTools           : BoolProperty(name="Special Tools", description = "Enable advanced SDK Tools", default = False)
     UnloadEmptyArchives   : BoolProperty(name="Unload Empty Archives", description="Unload Archives that do not Contain any Textures, Materials, or Meshes", default = True)
     DeleteOnLoadArchive   : BoolProperty(name="Nuke Files on Archive Load", description="Delete all Textures, Materials, and Meshes in project when selecting a new archive", default = False)
     ForceSearchAll        : BoolProperty(name="Force Search All Files", description="Searches for all IDs in every file instead of ending early")
     UnloadPatches         : BoolProperty(name="Unload Previous Patches", description="Unload Previous Patches when bulk loading")
 
     SaveNonSDKMaterials   : BoolProperty(name="Save Non-SDK Materials", description="Toggle if non-SDK materials should be autosaved when saving a mesh", default = False)
-    LegacyWeightNames     : BoolProperty(name="Legacy Weight Names", description="Brings back the old naming system for vertex groups using the X_Y schema", default = False)
+    LegacyWeightNames     : BoolProperty(name="Legacy Weight Names", description="Brings back the old naming system for vertex groups using the X_Y schema", default = True)
 
 class HellDivers2ToolsPanel(Panel):
     bl_label = f"Helldivers 2 SDK: Community Edition v{bl_info['version'][0]}.{bl_info['version'][1]}.{bl_info['version'][2]}"
@@ -4985,7 +5023,7 @@ class HellDivers2ToolsPanel(Panel):
             row.prop(scene.Hd2ToolPanelSettings, "SaveNonSDKMaterials")
             row.prop(scene.Hd2ToolPanelSettings, "LegacyWeightNames")
             #Custom Searching tools
-            row = mainbox.row(); row.separator(); row.label(text="Research Tools"); box = row.box(); row = box.grid_flow(columns=1)
+            row = mainbox.row(); row.separator(); row.label(text="Special Tools"); box = row.box(); row = box.grid_flow(columns=1)
             # Draw Bulk Loader Extras
             row.prop(scene.Hd2ToolPanelSettings, "EnableTools")
             if scene.Hd2ToolPanelSettings.EnableTools:
@@ -4999,6 +5037,8 @@ class HellDivers2ToolsPanel(Panel):
                 col = box.grid_flow(columns=2)
                 col.operator("helldiver2.bulk_load", icon= 'IMPORT', text="Bulk Load")
                 col.operator("helldiver2.search_by_entry", icon= 'VIEWZOOM')
+                row = box.grid_flow(columns=1)
+                row.operator("helldiver2.meshfixtool", icon='MODIFIER')
                 search = mainbox.row()
                 search.label(text=Global_searchpath)
                 search.operator("helldiver2.change_searchpath", icon='FILEBROWSER')
@@ -5423,6 +5463,7 @@ classes = (
     LatestReleaseOperator,
     MaterialShaderVariableEntryOperator,
     MaterialShaderVariableColorEntryOperator,
+    MeshFixOperator,
 )
 
 Global_TocManager = TocManager()
