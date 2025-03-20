@@ -83,7 +83,10 @@
         "0a15a5b5d8695e47": "IE-57 Hell-Bent",
         "1120577ed1e095f8": "B-22 Model Citizen",
         "4574fd34bddba5c4": "TR-40 Gold Eagle",
-        "8710c8ba1e22b42c": "I-92 Fire Fighter"
+        "8710c8ba1e22b42c": "I-92 Fire Fighter",
+        "2351919ff531f494": "GS-11 Democracy's Deputy",
+        "00cf0ef7df912a6e":	"GS-66 Lawmaker",
+        "14fe2734dcb8d1ed":	"GS-17 Frontier Marshall"
     },
 
     "Helmet": {
@@ -163,7 +166,10 @@
         "fea0e08cff101f8e": "IE-3 Martyr",
         "d1a39b5edac646aa": "B-22 Model Citizen",
         "c19663a7f34f88fc": "TR-40 Gold Eagle",
-        "292b09dac80ce1de": "UF-84 Doubt Killer"
+        "292b09dac80ce1de": "UF-84 Doubt Killer",
+        "dbe6c57c7e3b8747": "GS-11 Democracy's Deputy",
+        "a6065ffb410d5e1c":	"GS-66 Lawmaker",
+        "213bbf4edad25223":	"GS-17 Frontier Marshall"
     },
 
     "Cape": {
@@ -211,7 +217,10 @@
         "f7ddd187e625c82d": "Per Democrasum",
         "2b66c54f65b07181": "Vision of Freedom",
         "28144646f3715e9d": "Eye of Freedom",
-        "afac01a32ebc55ba": "Emblem of Freedom"
+        "afac01a32ebc55ba": "Emblem of Freedom",
+        "d5edf126c87d4652": "Reaper of Bounties",
+        "cb1f8f8aa3ccb1e0": "Covering Fire",
+        "b3a2dc455eda9736": "Veil of the Valorous Vagabond"
     },
     "Environment": { 
         "fc5b6bff0db90aab": "Super Destroyer Interior 1" ,
@@ -327,7 +336,7 @@
     },
     "Shotgun": {
         "c5a05d09369d0670": "SG-225 Breaker, SG-225SP Breaker Spray & Pray",
-        "e566e3aaf90db459": "SG-8 Punisher, SG-8S Slugger, SG-8P Punisher Plasma",
+        "e566e3aaf90db459": "SG-8 Punisher, SG-8S Slugger, SG-8P Punisher Plasma, R-6 Deadeye",
         "2fe755e42b659f64": "SG-225IE Breaker Incendiary",
         "7af5df78217fd645": "SG-451 Cookout",
         "522be23400cc6086": "SG-20 Halt",
@@ -342,7 +351,7 @@
         "2350348a9acf49c4": "SG-22 Bushwhacker",
         "b29a2fa06fdd99d2": "GP-31 Grenade Pistol",
         "41ce78fe8f96bebe": "P-72 Crisper",
-        "82dcd83d81a385f3": "LAS-7 Dagger",
+        "82dcd83d81a385f3": "LAS-7 Dagger, LAS-58 Talon",
         "2844da91583db0f4": "P-11 Stim Pistol"
     },
 
