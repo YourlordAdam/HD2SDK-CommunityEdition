@@ -125,7 +125,7 @@ TextureTypeLookup = {
         "Alpha Mask",
         "Base Color/Metallic"
     ),
-    "temp": (
+    "advanced": (
         "",
         "",
         "Normal/AO/Roughness",
@@ -141,8 +141,8 @@ TextureTypeLookup = {
 }
 
 Global_Materials = (
-        ("temp", "Temp", "Sourced from the Illuminate Overseer."),
         ("basic+", "Basic+", "A basic material with a color, normal, and PBR map which renders in the UI, Sourced from the super credits prop"),
+        ("advanced", "Advanced", "A more comlpicated material, that is color, normal, emission and PBR capable which renders in the UI. Sourced from the Illuminate Overseer."),
         ("alphaclip", "Alpha Clip", "A material that supports an alpha mask which does not render in the UI. Sourced from a skeleton pile"),
         ("original", "Original", "The original template used for all mods uploaded to Nexus prior to the addon's public release, which is bloated with additional unnecessary textures. Sourced from a terminid"),
         ("basic", "Basic", "A basic material with a color, normal, and PBR map. Sourced from a trash bag prop"),
@@ -155,7 +155,7 @@ Global_MaterialParentIDs = {
     6101987038150196875 : "original",
     15356477064658408677 : "basic",
     15235712479575174153 : "emissive",
-    17265463703140804126 : "temp"
+    17265463703140804126 : "advanced"
 }
 
 #endregion
