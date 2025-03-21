@@ -4711,41 +4711,53 @@ class LatestReleaseOperator(Operator):
         return{'FINISHED'}
 
 class MeshFixOperator(Operator):
-    bl_label = "Repatch Meshes"
+    bl_label = "Fix Meshes"
     bl_idname = "helldiver2.meshfixtool"
     bl_description = "Auto-fixes meshes in the currently loaded patch. Warning, this may take some time."
 
     def execute(self, context):
         if PatchesNotLoaded(self):
             return {'CANCELLED'}
-        # for archive in Global_ArchiveHashes:
-        #     ID = archive[0]
-        #     path = Global_gamepath + ID
-        #     Global_TocManager.LoadArchive(str(path), True)
         numMeshesRepatched = 0
         for entry in Global_TocManager.ActivePatch.TocEntries:
             if entry.TypeID != MeshID:
                 PrettyPrint(f"Skipping {entry.FileID} as it is not a mesh entry")
                 continue
+            numMeshesRepatched += 1
+            newEntry = deepcopy(entry)
+            newEntry.Load(False, False)
             fileID = entry.FileID
             typeID = entry.TypeID
-            entry.Load()
             Global_TocManager.RemoveEntryFromPatch(fileID, typeID)
             Entry = Global_TocManager.GetEntry(fileID, typeID)
             if Entry == None:
                 self.report({'ERROR'}, f"{entry.FileID}'s archive is not loaded! Make sure it's archive is loaded!")
                 Global_TocManager.AddNewEntryToPatch(entry) # add back the old entry we deleted
-                return {'CANCELLED'}
-            numMeshesRepatched += 1
-            collection = bpy.data.collections.new(f"MeshFix_{entry.FileID}")
-            bpy.context.collection = collection
-            # bpy.context.scene.collection.children.link(collection)
-            # layer_collection = bpy.context.view_layer.layer_collection.children[collection.name]
-            # bpy.context.view_layer.active_layer_collection = layer_collection
-            Global_TocManager.Save(fileID, typeID)
-            for obj in collection.objects:
-                bpy.data.objects.remove(obj)
-            bpy.data.collections.remove(collection)
+                return{'CANCELLED'}
+            tempEntry = Global_TocManager.AddEntryToPatch(fileID, typeID)
+            tempEntry.Load(False, False)
+            
+            newEntry.LoadedData.UnkRef1            = tempEntry.LoadedData.UnkRef1
+            newEntry.LoadedData.BonesRef           = tempEntry.LoadedData.BonesRef
+            newEntry.LoadedData.CompositeRef       = tempEntry.LoadedData.CompositeRef
+            newEntry.LoadedData.HeaderData1        = tempEntry.LoadedData.HeaderData1
+            newEntry.LoadedData.TransformInfoOffset= tempEntry.LoadedData.TransformInfoOffset
+            newEntry.LoadedData.HeaderData2        = tempEntry.LoadedData.HeaderData2
+            newEntry.LoadedData.CustomizationInfoOffset  = tempEntry.LoadedData.CustomizationInfoOffset
+            newEntry.LoadedData.UnkHeaderOffset1   = tempEntry.LoadedData.UnkHeaderOffset1
+            newEntry.LoadedData.UnkHeaderOffset2   = tempEntry.LoadedData.UnkHeaderOffset1
+            newEntry.LoadedData.BoneInfoOffset     = tempEntry.LoadedData.BoneInfoOffset
+            newEntry.LoadedData.StreamInfoOffset   = tempEntry.LoadedData.StreamInfoOffset
+            newEntry.LoadedData.EndingOffset       = tempEntry.LoadedData.EndingOffset
+            newEntry.LoadedData.MeshInfoOffset     = tempEntry.LoadedData.MeshInfoOffset
+            newEntry.LoadedData.HeaderUnk          = tempEntry.LoadedData.HeaderUnk
+            newEntry.LoadedData.MaterialsOffset    = tempEntry.LoadedData.MaterialsOffset
+
+            Global_TocManager.RemoveEntryFromPatch(fileID, typeID)
+            Global_TocManager.AddNewEntryToPatch(newEntry)
+            
+        SaveUnsavedEntries(self)
+        Global_TocManager.PatchActiveArchive()
         PrettyPrint(f"Repatched {numMeshesRepatched} meshes.")
         return{'FINISHED'}
 #endregion
