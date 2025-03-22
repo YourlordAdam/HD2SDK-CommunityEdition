@@ -4908,7 +4908,8 @@ class Hd2ToolPanelSettings(PropertyGroup):
     # Settings
     MenuExpanded     : BoolProperty(default = False)
 
-    ShowExtras       : BoolProperty(name="Extra", description = "Show Extras", default = False)
+    ShowExtras       : BoolProperty(name="Extra Entry Types", description = "Shows all Extra entry types.", default = False)
+    FriendlyNames    : BoolProperty(name="Show Friendly Names", description="Enable friendly names for entries if they have any. Disabling this option can greatly increase UI preformance if a patch has a large number of entries.", default = True)
 
     ImportMaterials  : BoolProperty(name="Import Materials", description = "Fully import materials by appending the textures utilized, otherwise create placeholders", default = True)
     ImportLods       : BoolProperty(name="Import LODs", description = "Import LODs", default = False)
@@ -5052,6 +5053,7 @@ class HellDivers2ToolsPanel(Panel):
             row = mainbox.grid_flow(columns=2)
             row = mainbox.row(); row.separator(); row.label(text="Display Types"); box = row.box(); row = box.grid_flow(columns=1)
             row.prop(scene.Hd2ToolPanelSettings, "ShowExtras")
+            row.prop(scene.Hd2ToolPanelSettings, "FriendlyNames")
             row = mainbox.row(); row.separator(); row.label(text="Import Options"); box = row.box(); row = box.grid_flow(columns=1)
             row.prop(scene.Hd2ToolPanelSettings, "ImportMaterials")
             row.prop(scene.Hd2ToolPanelSettings, "ImportLods")
@@ -5248,17 +5250,19 @@ class HellDivers2ToolsPanel(Panel):
                         searchTerm = str(hex_to_decimal(searchTerm))
                     if str(Entry.FileID).find(searchTerm) == -1: continue
                     # Deal with friendly names
-                    if len(Global_TocManager.SavedFriendlyNameIDs) > len(DrawChain) and Global_TocManager.SavedFriendlyNameIDs[len(DrawChain)] == Entry.FileID:
-                        FriendlyName = Global_TocManager.SavedFriendlyNames[len(DrawChain)]
-                    else:
-                        try:
-                            FriendlyName = Global_TocManager.SavedFriendlyNames[Global_TocManager.SavedFriendlyNameIDs.index(Entry.FileID)]
-                            NewFriendlyNames.append(FriendlyName)
-                            NewFriendlyIDs.append(Entry.FileID)
-                        except:
-                            FriendlyName = GetFriendlyNameFromID(Entry.FileID)
-                            NewFriendlyNames.append(FriendlyName)
-                            NewFriendlyIDs.append(Entry.FileID)
+                    FriendlyName = str(Entry.FileID)
+                    if scene.Hd2ToolPanelSettings.FriendlyNames:
+                        if len(Global_TocManager.SavedFriendlyNameIDs) > len(DrawChain) and Global_TocManager.SavedFriendlyNameIDs[len(DrawChain)] == Entry.FileID:
+                            FriendlyName = Global_TocManager.SavedFriendlyNames[len(DrawChain)]
+                        else:
+                            try:
+                                FriendlyName = Global_TocManager.SavedFriendlyNames[Global_TocManager.SavedFriendlyNameIDs.index(Entry.FileID)]
+                                NewFriendlyNames.append(FriendlyName)
+                                NewFriendlyIDs.append(Entry.FileID)
+                            except:
+                                FriendlyName = GetFriendlyNameFromID(Entry.FileID)
+                                NewFriendlyNames.append(FriendlyName)
+                                NewFriendlyIDs.append(Entry.FileID)
 
 
                     # Draw Entry
@@ -5279,8 +5283,9 @@ class HellDivers2ToolsPanel(Panel):
                     # Update Draw Chain
                     DrawChain.append(PatchEntry)
             Global_TocManager.DrawChain = DrawChain
-        Global_TocManager.SavedFriendlyNames = NewFriendlyNames
-        Global_TocManager.SavedFriendlyNameIDs = NewFriendlyIDs
+        if scene.Hd2ToolPanelSettings.FriendlyNames:  
+            Global_TocManager.SavedFriendlyNames = NewFriendlyNames
+            Global_TocManager.SavedFriendlyNameIDs = NewFriendlyIDs
 
 class WM_MT_button_context(Menu):
     bl_label = "Entry Context Menu"
