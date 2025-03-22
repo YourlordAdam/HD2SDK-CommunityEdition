@@ -4723,9 +4723,9 @@ class MeshFixOperator(Operator):
             if entry.TypeID != MeshID:
                 PrettyPrint(f"Skipping {entry.FileID} as it is not a mesh entry")
                 continue
+            PrettyPrint(f"Repatching {entry.FileID}")
             numMeshesRepatched += 1
-            tempEntry = deepcopy(entry)
-            tempEntry.Load(False, False)
+            entry.Load(False, False)
             fileID = entry.FileID
             typeID = entry.TypeID
             Global_TocManager.RemoveEntryFromPatch(fileID, typeID)
@@ -4737,10 +4737,7 @@ class MeshFixOperator(Operator):
             newEntry = Global_TocManager.AddEntryToPatch(fileID, typeID)
             newEntry.Load(False, False)
             
-            newEntry.LoadedData.RawMeshes = tempEntry.LoadedData.RawMeshes
-
-            Global_TocManager.RemoveEntryFromPatch(fileID, typeID)
-            Global_TocManager.AddNewEntryToPatch(newEntry)
+            newEntry.LoadedData.RawMeshes = entry.LoadedData.RawMeshes
             
         SaveUnsavedEntries(self)
         Global_TocManager.PatchActiveArchive()
