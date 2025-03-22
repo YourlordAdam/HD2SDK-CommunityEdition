@@ -4724,8 +4724,8 @@ class MeshFixOperator(Operator):
                 PrettyPrint(f"Skipping {entry.FileID} as it is not a mesh entry")
                 continue
             numMeshesRepatched += 1
-            newEntry = deepcopy(entry)
-            newEntry.Load(False, False)
+            tempEntry = deepcopy(entry)
+            tempEntry.Load(False, False)
             fileID = entry.FileID
             typeID = entry.TypeID
             Global_TocManager.RemoveEntryFromPatch(fileID, typeID)
@@ -4734,24 +4734,10 @@ class MeshFixOperator(Operator):
                 self.report({'ERROR'}, f"{entry.FileID}'s archive is not loaded! Make sure it's archive is loaded!")
                 Global_TocManager.AddNewEntryToPatch(entry) # add back the old entry we deleted
                 return{'CANCELLED'}
-            tempEntry = Global_TocManager.AddEntryToPatch(fileID, typeID)
-            tempEntry.Load(False, False)
+            newEntry = Global_TocManager.AddEntryToPatch(fileID, typeID)
+            newEntry.Load(False, False)
             
-            newEntry.LoadedData.UnkRef1            = tempEntry.LoadedData.UnkRef1
-            newEntry.LoadedData.BonesRef           = tempEntry.LoadedData.BonesRef
-            newEntry.LoadedData.CompositeRef       = tempEntry.LoadedData.CompositeRef
-            newEntry.LoadedData.HeaderData1        = tempEntry.LoadedData.HeaderData1
-            newEntry.LoadedData.TransformInfoOffset= tempEntry.LoadedData.TransformInfoOffset
-            newEntry.LoadedData.HeaderData2        = tempEntry.LoadedData.HeaderData2
-            newEntry.LoadedData.CustomizationInfoOffset  = tempEntry.LoadedData.CustomizationInfoOffset
-            newEntry.LoadedData.UnkHeaderOffset1   = tempEntry.LoadedData.UnkHeaderOffset1
-            newEntry.LoadedData.UnkHeaderOffset2   = tempEntry.LoadedData.UnkHeaderOffset1
-            newEntry.LoadedData.BoneInfoOffset     = tempEntry.LoadedData.BoneInfoOffset
-            newEntry.LoadedData.StreamInfoOffset   = tempEntry.LoadedData.StreamInfoOffset
-            newEntry.LoadedData.EndingOffset       = tempEntry.LoadedData.EndingOffset
-            newEntry.LoadedData.MeshInfoOffset     = tempEntry.LoadedData.MeshInfoOffset
-            newEntry.LoadedData.HeaderUnk          = tempEntry.LoadedData.HeaderUnk
-            newEntry.LoadedData.MaterialsOffset    = tempEntry.LoadedData.MaterialsOffset
+            newEntry.LoadedData.RawMeshes = tempEntry.LoadedData.RawMeshes
 
             Global_TocManager.RemoveEntryFromPatch(fileID, typeID)
             Global_TocManager.AddNewEntryToPatch(newEntry)
