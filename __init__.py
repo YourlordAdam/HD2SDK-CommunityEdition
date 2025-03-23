@@ -132,6 +132,7 @@ TextureTypeLookup = {
         "", 
         "Primary LUT", 
         "",
+    ),
     "alphaclip": (
         "Normal/AO/Roughness",
         "Alpha Mask",
