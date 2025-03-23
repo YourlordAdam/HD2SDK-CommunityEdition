@@ -1814,7 +1814,7 @@ def GenerateMaterialTextures(Entry):
             for link in input_socket.links:
                 image = link.from_node.image
                 tempdir = tempfile.gettempdir()
-                path = f"{tempdir}\\{image.name}.{str(image.file_format).lower()}"
+                path = f"{tempdir}\\{image.name.split('.')[0]}.{str(image.file_format).lower()}"
                 PrettyPrint(f"Saving image at path: {path}")
                 image.save(filepath=path)
                 filepaths.append(path)
