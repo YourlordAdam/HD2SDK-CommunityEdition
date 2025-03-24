@@ -1826,9 +1826,15 @@ def GenerateMaterialTextures(Entry):
                 if extension == "dds" or extension == "":
                     raise Exception(f"Selected texture: {image.name} is a DDS image and is unsupported by blender. Please manually apply any DDS textures to the patch after saving the material by right clicking on the texture entry and Importing the DDS file.")
                 path = f"{tempdir}\\{image.name.split('.')[0]}.{extension}"
+                oldPath = image.filepath
                 PrettyPrint(f"Saving image at path: {path}")
-                image.save(filepath=path)
-                filepaths.append(path)
+                try:
+                    image.save(filepath=path)
+                    filepaths.append(path)
+                except Exception as e:
+                    PrettyPrint(f"Failed to save image at path. {e}", "error")
+                    PrettyPrint(f"Setting image path to old path: {oldPath}")
+                    filepaths.append(oldPath)
 
                 # enforce proper colorspace for abnormal stingray textures
                 if "Normal" in input_socket.name or "Color/Emission Mask" in input_socket.name:
