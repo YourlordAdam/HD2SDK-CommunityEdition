@@ -1630,14 +1630,12 @@ def CreateAddonMaterial(ID, StingrayMat, mat, Entry):
 
     idx = 0
     height = round(len(StingrayMat.TexIDs) * 300 / 2)
-    RoughnessMaskTex = None
+    TextureNodes = []
     for TextureID in StingrayMat.TexIDs:
         texImage = mat.node_tree.nodes.new('ShaderNodeTexImage')
         texImage.location = (-450, height - 300*idx)
 
-        if Entry.MaterialTemplate == "advanced":
-            if idx == 2:
-                RoughnessMaskTex = texImage
+        TextureNodes.append(texImage)
 
         name = TextureTypeLookup[Entry.MaterialTemplate][idx]
         socket_type = "NodeSocketColor"
@@ -1686,7 +1684,7 @@ def CreateAddonMaterial(ID, StingrayMat, mat, Entry):
     elif Entry.MaterialTemplate == "original": SetupOriginalBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separateColor, normalMap)
     elif Entry.MaterialTemplate == "emissive": SetupEmissiveBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separateColor, normalMap)
     elif Entry.MaterialTemplate == "alphaclip": SetupAlphaClipBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separateColor, normalMap, mat)
-    elif Entry.MaterialTemplate == "advanced": SetupAdvancedBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separateColor, normalMap, RoughnessMaskTex, group, mat)
+    elif Entry.MaterialTemplate == "advanced": SetupAdvancedBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separateColor, normalMap, TextureNodes, group, mat)
     
 def SetupBasicBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separateColor, normalMap):
     bsdf.inputs['Emission Strength'].default_value = 0
@@ -1745,8 +1743,9 @@ def SetupNormalMapTemplate(nodeTree, inputNode, normalMap, bsdf):
     nodeTree.links.new(combineColorNormal.outputs['Color'], normalMap.inputs['Color'])
     nodeTree.links.new(normalMap.outputs['Normal'], bsdf.inputs['Normal'])
 
-def SetupAdvancedBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separateColor, normalMap, RoughnessMaskTex, group, mat):
+def SetupAdvancedBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separateColor, normalMap, TextureNodes, group, mat):
     bsdf.inputs['Emission Strength'].default_value = 0
+    TextureNodes[5].image.colorspace_settings.name = 'Non-Color'
     nodeTree.nodes.remove(separateColor)
     inputNode.location = (-750, 0)
     separateColorNormal = nodeTree.nodes.new('ShaderNodeSeparateColor')
@@ -1762,7 +1761,7 @@ def SetupAdvancedBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separate
     nodeTree.links.new(inputNode.outputs['Metallic'], bsdf.inputs['Metallic'])
 
     nodeTree.interface.new_socket(name="Roughness", in_out ="INPUT", socket_type="NodeSocketFloat").hide_value = True
-    mat.node_tree.links.new(RoughnessMaskTex.outputs['Alpha'], group.inputs['Roughness'])
+    mat.node_tree.links.new(TextureNodes[2].outputs['Alpha'], group.inputs['Roughness'])
     nodeTree.links.new(inputNode.outputs['Roughness'], bsdf.inputs['Roughness'])
     
     nodeTree.links.new(bsdf.outputs['BSDF'], outputNode.inputs['Surface'])
