@@ -1763,6 +1763,15 @@ def SetupAdvancedBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separate
     nodeTree.interface.new_socket(name="Roughness", in_out ="INPUT", socket_type="NodeSocketFloat").hide_value = True
     mat.node_tree.links.new(TextureNodes[2].outputs['Alpha'], group.inputs['Roughness'])
     nodeTree.links.new(inputNode.outputs['Roughness'], bsdf.inputs['Roughness'])
+
+    multiplyEmission = nodeTree.nodes.new('ShaderNodeMath')
+    multiplyEmission.location = (-350, -350)
+    multiplyEmission.operation = 'MULTIPLY'
+    multiplyEmission.inputs[1].default_value = 0
+    nodeTree.interface.new_socket(name="Emission Mask", in_out ="INPUT", socket_type="NodeSocketFloat").hide_value = True
+    mat.node_tree.links.new(TextureNodes[5].outputs['Alpha'], group.inputs['Emission Mask'])
+    nodeTree.links.new(inputNode.outputs['Emission Mask'], multiplyEmission.inputs[0])
+    nodeTree.links.new(multiplyEmission.outputs['Value'], bsdf.inputs['Emission Strength'])
     
     nodeTree.links.new(bsdf.outputs['BSDF'], outputNode.inputs['Surface'])
 
@@ -1814,7 +1823,6 @@ def GenerateMaterialTextures(Entry):
                 image = link.from_node.image
                 tempdir = tempfile.gettempdir()
                 extension = str(image.file_format).lower()
-                PrettyPrint(f"extension: {extension}")
                 if extension == "dds" or extension == "":
                     raise Exception(f"Selected texture: {image.name} is a DDS image and is unsupported by blender. Please manually apply any DDS textures to the patch after saving the material by right clicking on the texture entry and Importing the DDS file.")
                 path = f"{tempdir}\\{image.name.split('.')[0]}.{extension}"
@@ -1825,6 +1833,19 @@ def GenerateMaterialTextures(Entry):
                 # enforce proper colorspace for abnormal stingray textures
                 if "Normal" in input_socket.name or "Color/Emission Mask" in input_socket.name:
                      image.colorspace_settings.name = 'Non-Color'
+    
+    # display proper emissives on advanced material
+    if "advanced" in group.node_tree.name:
+        colorVariable = Entry.LoadedData.ShaderVariables[32].values
+        emissionColor = (colorVariable[0], colorVariable[1], colorVariable[2], 1)
+        emissionStrength = Entry.LoadedData.ShaderVariables[40].values[0]
+        emissionStrength = max(0, emissionStrength)
+        PrettyPrint(f"Emission color: {emissionColor} Strength: {emissionStrength}")
+        for node in group.node_tree.nodes:
+            if node.type == 'BSDF_PRINCIPLED':
+                node.inputs['Emission Color'].default_value = emissionColor
+            if node.type == 'MATH' and node.operation == 'MULTIPLY':
+                node.inputs[1].default_value = emissionStrength
 
     PrettyPrint(f"Found {len(filepaths)} Images: {filepaths}")
     return filepaths
