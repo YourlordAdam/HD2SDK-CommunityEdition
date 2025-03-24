@@ -1,6 +1,6 @@
 bl_info = {
     "name": "Helldivers 2 SDK: Community Edition",
-    "version": (2, 7, 2),
+    "version": (2, 7, 3),
     "blender": (4, 0, 0),
     "category": "Import-Export",
 }
@@ -1645,14 +1645,12 @@ def CreateAddonMaterial(ID, StingrayMat, mat, Entry):
 
     idx = 0
     height = round(len(StingrayMat.TexIDs) * 300 / 2)
-    RoughnessMaskTex = None
+    TextureNodes = []
     for TextureID in StingrayMat.TexIDs:
         texImage = mat.node_tree.nodes.new('ShaderNodeTexImage')
         texImage.location = (-450, height - 300*idx)
 
-        if Entry.MaterialTemplate == "advanced":
-            if idx == 2:
-                RoughnessMaskTex = texImage
+        TextureNodes.append(texImage)
 
         name = TextureTypeLookup[Entry.MaterialTemplate][idx]
         socket_type = "NodeSocketColor"
@@ -1701,7 +1699,7 @@ def CreateAddonMaterial(ID, StingrayMat, mat, Entry):
     elif Entry.MaterialTemplate == "original": SetupOriginalBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separateColor, normalMap)
     elif Entry.MaterialTemplate == "emissive": SetupEmissiveBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separateColor, normalMap)
     elif Entry.MaterialTemplate == "alphaclip": SetupAlphaClipBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separateColor, normalMap, mat)
-    elif Entry.MaterialTemplate == "advanced": SetupAdvancedBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separateColor, normalMap, RoughnessMaskTex, group, mat)
+    elif Entry.MaterialTemplate == "advanced": SetupAdvancedBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separateColor, normalMap, TextureNodes, group, mat)
     
 def SetupBasicBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separateColor, normalMap):
     bsdf.inputs['Emission Strength'].default_value = 0
@@ -1760,8 +1758,9 @@ def SetupNormalMapTemplate(nodeTree, inputNode, normalMap, bsdf):
     nodeTree.links.new(combineColorNormal.outputs['Color'], normalMap.inputs['Color'])
     nodeTree.links.new(normalMap.outputs['Normal'], bsdf.inputs['Normal'])
 
-def SetupAdvancedBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separateColor, normalMap, RoughnessMaskTex, group, mat):
+def SetupAdvancedBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separateColor, normalMap, TextureNodes, group, mat):
     bsdf.inputs['Emission Strength'].default_value = 0
+    TextureNodes[5].image.colorspace_settings.name = 'Non-Color'
     nodeTree.nodes.remove(separateColor)
     inputNode.location = (-750, 0)
     separateColorNormal = nodeTree.nodes.new('ShaderNodeSeparateColor')
@@ -1777,8 +1776,17 @@ def SetupAdvancedBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separate
     nodeTree.links.new(inputNode.outputs['Metallic'], bsdf.inputs['Metallic'])
 
     nodeTree.interface.new_socket(name="Roughness", in_out ="INPUT", socket_type="NodeSocketFloat").hide_value = True
-    mat.node_tree.links.new(RoughnessMaskTex.outputs['Alpha'], group.inputs['Roughness'])
+    mat.node_tree.links.new(TextureNodes[2].outputs['Alpha'], group.inputs['Roughness'])
     nodeTree.links.new(inputNode.outputs['Roughness'], bsdf.inputs['Roughness'])
+
+    multiplyEmission = nodeTree.nodes.new('ShaderNodeMath')
+    multiplyEmission.location = (-350, -350)
+    multiplyEmission.operation = 'MULTIPLY'
+    multiplyEmission.inputs[1].default_value = 0
+    nodeTree.interface.new_socket(name="Emission Mask", in_out ="INPUT", socket_type="NodeSocketFloat").hide_value = True
+    mat.node_tree.links.new(TextureNodes[5].outputs['Alpha'], group.inputs['Emission Mask'])
+    nodeTree.links.new(inputNode.outputs['Emission Mask'], multiplyEmission.inputs[0])
+    nodeTree.links.new(multiplyEmission.outputs['Value'], bsdf.inputs['Emission Strength'])
     
     nodeTree.links.new(bsdf.outputs['BSDF'], outputNode.inputs['Surface'])
 
@@ -1829,10 +1837,31 @@ def GenerateMaterialTextures(Entry):
             for link in input_socket.links:
                 image = link.from_node.image
                 tempdir = tempfile.gettempdir()
-                path = f"{tempdir}\\{image.name.split('.')[0]}.{str(image.file_format).lower()}"
+                extension = str(image.file_format).lower()
+                if extension == "dds" or extension == "":
+                    raise Exception(f"Selected texture: {image.name} is a DDS image and is unsupported by blender. Please manually apply any DDS textures to the patch after saving the material by right clicking on the texture entry and Importing the DDS file.")
+                path = f"{tempdir}\\{image.name.split('.')[0]}.{extension}"
                 PrettyPrint(f"Saving image at path: {path}")
                 image.save(filepath=path)
                 filepaths.append(path)
+
+                # enforce proper colorspace for abnormal stingray textures
+                if "Normal" in input_socket.name or "Color/Emission Mask" in input_socket.name:
+                     image.colorspace_settings.name = 'Non-Color'
+    
+    # display proper emissives on advanced material
+    if "advanced" in group.node_tree.name:
+        colorVariable = Entry.LoadedData.ShaderVariables[32].values
+        emissionColor = (colorVariable[0], colorVariable[1], colorVariable[2], 1)
+        emissionStrength = Entry.LoadedData.ShaderVariables[40].values[0]
+        emissionStrength = max(0, emissionStrength)
+        PrettyPrint(f"Emission color: {emissionColor} Strength: {emissionStrength}")
+        for node in group.node_tree.nodes:
+            if node.type == 'BSDF_PRINCIPLED':
+                node.inputs['Emission Color'].default_value = emissionColor
+            if node.type == 'MATH' and node.operation == 'MULTIPLY':
+                node.inputs[1].default_value = emissionStrength
+
     PrettyPrint(f"Found {len(filepaths)} Images: {filepaths}")
     return filepaths
 
