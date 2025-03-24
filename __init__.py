@@ -1783,8 +1783,7 @@ def CreateGenericMaterial(ID, StingrayMat, mat):
         texImage.location = (-450, 850 - 300*idx)
 
         # Load Texture
-        try:    bpy.data.images[str(TextureID)]
-        except: Global_TocManager.Load(TextureID, TexID, False, True)
+        Global_TocManager.Load(TextureID, TexID, False, True)
         # Apply Texture
         try: texImage.image = bpy.data.images[str(TextureID)]
         except:
