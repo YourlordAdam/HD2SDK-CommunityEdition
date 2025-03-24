@@ -1821,6 +1821,11 @@ def GenerateMaterialTextures(Entry):
                 PrettyPrint(f"Saving image at path: {path}")
                 image.save(filepath=path)
                 filepaths.append(path)
+
+                # enforce proper colorspace for abnormal stingray textures
+                if "Normal" in input_socket.name or "Color/Emission Mask" in input_socket.name:
+                     image.colorspace_settings.name = 'Non-Color'
+
     PrettyPrint(f"Found {len(filepaths)} Images: {filepaths}")
     return filepaths
 
