@@ -1814,7 +1814,11 @@ def GenerateMaterialTextures(Entry):
             for link in input_socket.links:
                 image = link.from_node.image
                 tempdir = tempfile.gettempdir()
-                path = f"{tempdir}\\{image.name.split('.')[0]}.{str(image.file_format).lower()}"
+                extension = str(image.file_format).lower()
+                PrettyPrint(f"extension: {extension}")
+                if extension == "dds" or extension == "":
+                    raise Exception(f"Selected texture: {image.name} is a DDS image and is unsupported by blender. Please manually apply any DDS textures to the patch after saving the material by right clicking on the texture entry and Importing the DDS file.")
+                path = f"{tempdir}\\{image.name.split('.')[0]}.{extension}"
                 PrettyPrint(f"Saving image at path: {path}")
                 image.save(filepath=path)
                 filepaths.append(path)
