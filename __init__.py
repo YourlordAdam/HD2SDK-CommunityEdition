@@ -1752,6 +1752,7 @@ def SetupAdvancedBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separate
     separateColorNormal.location = (-550, -150)
     combineColorNormal = nodeTree.nodes.new('ShaderNodeCombineColor')
     combineColorNormal.location = (-350, -150)
+    combineColorNormal.inputs['Blue'].default_value = 1
     nodeTree.links.new(inputNode.outputs['Normal/AO/Roughness'], separateColorNormal.inputs['Color'])
     nodeTree.links.new(separateColorNormal.outputs['Red'], combineColorNormal.inputs['Red'])
     nodeTree.links.new(separateColorNormal.outputs['Green'], combineColorNormal.inputs['Green'])
