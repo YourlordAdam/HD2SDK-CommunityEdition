@@ -1822,7 +1822,7 @@ def GenerateMaterialTextures(Entry):
                 image = link.from_node.image
                 tempdir = tempfile.gettempdir()
                 extension = str(image.file_format).lower()
-                if extension == "dds" or extension == "":
+                if (extension == "dds" or extension == "") and not os.path.exists(path):
                     raise Exception(f"Selected texture: {image.name} is a DDS image and is unsupported by blender. Please manually apply any DDS textures to the patch after saving the material by right clicking on the texture entry and Importing the DDS file.")
                 path = f"{tempdir}\\{image.name.split('.')[0]}.{extension}"
                 oldPath = image.filepath
