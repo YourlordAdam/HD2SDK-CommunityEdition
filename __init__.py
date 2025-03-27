@@ -1571,7 +1571,7 @@ def SaveStingrayMaterial(self, ID, TocData, GpuData, StreamData, LoadedData):
             if path.endswith(".dds"):
                 SaveImageDDS(path, Entry.FileID)
             else:
-                SaveImagePNG(path, Entry.FileID)    
+                SaveImagePNG(path, Entry.FileID)
         Global_TocManager.RemoveEntryFromPatch(oldTexID, TexID)
         index += 1
     f = MemoryStream(IOMode="write")
@@ -1831,13 +1831,16 @@ def GenerateMaterialTextures(Entry):
                     raise Exception(f"Selected texture: {image.name} is a DDS image and its filepath cannot be found. Please manually apply any DDS textures to the patch after saving the material by right clicking on the texture entry and Importing the DDS file.")
                 path = f"{tempdir}\\{image.name.split('.')[0]}.{extension}"
                 oldPath = image.filepath
-                PrettyPrint(f"Saving image at path: {path}")
-                try:
-                    image.save(filepath=path)
-                    filepaths.append(path)
-                except Exception as e:
-                    PrettyPrint(f"Failed to save image at path. {e}", "error")
-                    PrettyPrint(f"Setting image path to old path: {oldPath}")
+                if not os.path.exists(image.filepath):
+                    PrettyPrint(f"Saving image at path: {path} This might destroy color data.", "warn")
+                    try:
+                        image.save(filepath=path)
+                        filepaths.append(path)
+                    except Exception as e:
+                        PrettyPrint(f"Failed to save image at path. {e}", "error")
+                        PrettyPrint(f"Setting image path to old path: {oldPath}")
+                        filepaths.append(oldPath)
+                else:
                     filepaths.append(oldPath)
 
                 # enforce proper colorspace for abnormal stingray textures
@@ -4366,6 +4369,7 @@ def SaveImageDDS(filepath, object_id):
     Entry = Global_TocManager.GetEntry(int(object_id), TexID)
     if Entry != None:
         if len(filepath) > 1:
+            PrettyPrint(f"Saving image DDS: {filepath} to ID: {object_id}")
             # get texture data
             Entry.Load()
             StingrayTex = Entry.LoadedData
