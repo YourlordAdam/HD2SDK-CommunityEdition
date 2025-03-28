@@ -427,5 +427,13 @@
         "fe0fbe8486d53767": "Redeemer, Grenade Pistol & Dagger",
         "ea6967f8565a2d76": "AMR, Counter Sniper & Eruptor",
         "2d821486db99d8cb": "PLAS-39 Accelerator"
+    },
+
+    "Attachment": {
+        "d6e442e0741b6c5f": "Muzzle Brake",
+        "754f8570c7a383a6": "Duckbill Muzzle",
+        "8475f912fb83a589":	"Laser Light Combo",
+        "3968938b8147df7c":	"Solo Light",
+        "75cf73a0819bf767":	"Bayonet"
     }
 }
