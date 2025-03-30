@@ -4842,9 +4842,10 @@ def RepatchMeshes(self, path):
     
     Global_TocManager.UnloadPatches()
     
-    bpy.context.scene.Hd2ToolPanelSettings.ImportLods = False
-    bpy.context.scene.Hd2ToolPanelSettings.AutoLods = True
-    bpy.context.scene.Hd2ToolPanelSettings.ImportStatic = True
+    settings = bpy.context.scene.Hd2ToolPanelSettings
+    settings.ImportLods = False
+    settings.AutoLods = True
+    settings.ImportStatic = False
     
     PrettyPrint(f"Searching for patch files in: {path}")
     patchPaths = []
@@ -4870,9 +4871,16 @@ def RepatchMeshes(self, path):
                 PrettyPrint(f"Skipping {entry.FileID} as it is not a mesh entry")
                 continue
             PrettyPrint(f"Repatching {entry.FileID}")
+            settings.AutoLods = True
+            settings.ImportStatic = False
             numMeshesRepatched += 1
             entry.Load(False, True)
             patchObjects = bpy.context.scene.objects
+            if len(patchObjects) == 0:
+                settings.AutoLods = False
+                settings.ImportStatic = True
+                entry.Load(False, True)
+                patchObjects = bpy.context.scene.objects
             fileID = entry.FileID
             typeID = entry.TypeID
             Global_TocManager.RemoveEntryFromPatch(fileID, typeID)
