@@ -1,6 +1,6 @@
 bl_info = {
     "name": "Helldivers 2 SDK: Community Edition",
-    "version": (2, 7, 4),
+    "version": (2, 7, 5),
     "blender": (4, 0, 0),
     "category": "Import-Export",
 }
@@ -1581,8 +1581,12 @@ def SaveStingrayMaterial(self, ID, TocData, GpuData, StreamData, LoadedData):
             if not os.path.exists(path):
                 raise Exception(f"Could not find file at path: {path}")
             if not Entry:
-                raise Exception(f"Could not find or generate texture entry")
-            SaveImagePNG(path, Entry.FileID)    
+                raise Exception(f"Could not find or generate texture entry ID: {int(mat.TexIDs[TexIdx])}")
+            
+            if path.endswith(".dds"):
+                SaveImageDDS(path, Entry.FileID)
+            else:
+                SaveImagePNG(path, Entry.FileID)
         Global_TocManager.RemoveEntryFromPatch(oldTexID, TexID)
         index += 1
     f = MemoryStream(IOMode="write")
@@ -1767,6 +1771,7 @@ def SetupAdvancedBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separate
     separateColorNormal.location = (-550, -150)
     combineColorNormal = nodeTree.nodes.new('ShaderNodeCombineColor')
     combineColorNormal.location = (-350, -150)
+    combineColorNormal.inputs['Blue'].default_value = 1
     nodeTree.links.new(inputNode.outputs['Normal/AO/Roughness'], separateColorNormal.inputs['Color'])
     nodeTree.links.new(separateColorNormal.outputs['Red'], combineColorNormal.inputs['Red'])
     nodeTree.links.new(separateColorNormal.outputs['Green'], combineColorNormal.inputs['Green'])
@@ -1837,17 +1842,20 @@ def GenerateMaterialTextures(Entry):
                 image = link.from_node.image
                 tempdir = tempfile.gettempdir()
                 extension = str(image.file_format).lower()
-                if extension == "dds" or extension == "":
-                    raise Exception(f"Selected texture: {image.name} is a DDS image and is unsupported by blender. Please manually apply any DDS textures to the patch after saving the material by right clicking on the texture entry and Importing the DDS file.")
+                if (extension == "dds" or extension == "") and not os.path.exists(image.filepath):
+                    raise Exception(f"Selected texture: {image.name} is a DDS image and its filepath cannot be found. Please manually apply any DDS textures to the patch after saving the material by right clicking on the texture entry and Importing the DDS file.")
                 path = f"{tempdir}\\{image.name.split('.')[0]}.{extension}"
                 oldPath = image.filepath
-                PrettyPrint(f"Saving image at path: {path}")
-                try:
-                    image.save(filepath=path)
-                    filepaths.append(path)
-                except Exception as e:
-                    PrettyPrint(f"Failed to save image at path. {e}", "error")
-                    PrettyPrint(f"Setting image path to old path: {oldPath}")
+                if not os.path.exists(image.filepath):
+                    PrettyPrint(f"Saving image at path: {path} This might destroy color data.", "warn")
+                    try:
+                        image.save(filepath=path)
+                        filepaths.append(path)
+                    except Exception as e:
+                        PrettyPrint(f"Failed to save image at path. {e}", "error")
+                        PrettyPrint(f"Setting image path to old path: {oldPath}")
+                        filepaths.append(oldPath)
+                else:
                     filepaths.append(oldPath)
 
                 # enforce proper colorspace for abnormal stingray textures
@@ -1984,7 +1992,7 @@ def LoadStingrayTexture(ID, TocData, GpuData, StreamData, Reload, MakeBlendObjec
         with open(dds_path, 'w+b') as f:
             f.write(dds)
         
-        subprocess.run([Global_texconvpath, "-y", "-o", tempdir, "-ft", "png", "-f", "R8G8B8A8_UNORM", "-sepalpha", dds_path], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+        subprocess.run([Global_texconvpath, "-y", "-o", tempdir, "-ft", "png", "-f", "R8G8B8A8_UNORM", "-sepalpha", "-alpha", dds_path], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
 
         if os.path.isfile(png_path):
             image = bpy.data.images.load(png_path)
@@ -2004,7 +2012,7 @@ def BlendImageToStingrayTexture(image, StingrayTex):
     image.filepath_raw = tga_path
     image.save()
 
-    subprocess.run([Global_texconvpath, "-y", "-o", tempdir, "-ft", "dds", "-f", StingrayTex.Format, "-sepalpha", dds_path], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+    subprocess.run([Global_texconvpath, "-y", "-o", tempdir, "-ft", "dds", "-f", StingrayTex.Format, "-sepalpha", "-alpha", dds_path], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
     
     if os.path.isfile(dds_path):
         with open(dds_path, 'r+b') as f:
@@ -4233,7 +4241,7 @@ class ExportTexturePNGOperator(Operator, ExportHelper):
                         f.write(Entry.LoadedData.ToDDS())
                     else:
                         f.write(Entry.LoadedData.ToDDSArray()[i])
-                subprocess.run([Global_texconvpath, "-y", "-o", directory, "-ft", "png", "-f", "R8G8B8A8_UNORM", dds_path])
+                subprocess.run([Global_texconvpath, "-y", "-o", directory, "-ft", "png", "-f", "R8G8B8A8_UNORM", "-sepalpha", "-alpha", dds_path])
                 if os.path.isfile(dds_path):
                     self.report({'INFO'}, f"Saved PNG Texture to: {dds_path}")
                 else:
@@ -4293,7 +4301,7 @@ class BatchExportTexturePNGOperator(Operator):
                 dds_path = f"{tempdir}\\{EntryID}.dds"
                 with open(dds_path, 'w+b') as f:
                     f.write(Entry.LoadedData.ToDDS())
-                subprocess.run([Global_texconvpath, "-y", "-o", self.directory, "-ft", "png", "-f", "R8G8B8A8_UNORM", dds_path])
+                subprocess.run([Global_texconvpath, "-y", "-o", self.directory, "-ft", "png", "-f", "R8G8B8A8_UNORM", "-alpha", dds_path])
                 filepath = f"{self.directory}\\{EntryID}.png"
                 if os.path.isfile(filepath):
                     exportedfiles += 1
@@ -4317,22 +4325,7 @@ class SaveTextureFromDDSOperator(Operator, ImportHelper):
     def execute(self, context):
         if PatchesNotLoaded(self):
             return {'CANCELLED'}
-        Entry = Global_TocManager.GetEntry(int(self.object_id), TexID)
-        if Entry != None:
-            if len(self.filepath) > 1:
-                # get texture data
-                Entry.Load()
-                StingrayTex = Entry.LoadedData
-                with open(self.filepath, 'r+b') as f:
-                    StingrayTex.FromDDS(f.read())
-                Toc = MemoryStream(IOMode="write")
-                Gpu = MemoryStream(IOMode="write")
-                Stream = MemoryStream(IOMode="write")
-                StingrayTex.Serialize(Toc, Gpu, Stream)
-                # add texture to entry
-                Entry.SetData(Toc.Data, Gpu.Data, Stream.Data, False)
-
-                Global_TocManager.Save(int(self.object_id), TexID)
+        SaveImageDDS(self.filepath, self.object_id)
         
         # Redraw
         for area in context.screen.areas:
@@ -4369,12 +4362,33 @@ def SaveImagePNG(filepath, object_id):
             tempdir = tempfile.gettempdir()
             PrettyPrint(filepath)
             PrettyPrint(StingrayTex.Format)
-            subprocess.run([Global_texconvpath, "-y", "-o", tempdir, "-ft", "dds", "-dx10", "-f", StingrayTex.Format, filepath], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+            subprocess.run([Global_texconvpath, "-y", "-o", tempdir, "-ft", "dds", "-dx10", "-f", StingrayTex.Format, "-sepalpha", "-alpha", filepath], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
             nameIndex = filepath.rfind("\.".strip(".")) + 1
             fileName = filepath[nameIndex:].replace(".png", ".dds")
             dds_path = f"{tempdir}\\{fileName}"
             PrettyPrint(dds_path)
+            if not os.path.exists(dds_path):
+                raise Exception(f"Failed to convert to dds texture for: {dds_path}")
             with open(dds_path, 'r+b') as f:
+                StingrayTex.FromDDS(f.read())
+            Toc = MemoryStream(IOMode="write")
+            Gpu = MemoryStream(IOMode="write")
+            Stream = MemoryStream(IOMode="write")
+            StingrayTex.Serialize(Toc, Gpu, Stream)
+            # add texture to entry
+            Entry.SetData(Toc.Data, Gpu.Data, Stream.Data, False)
+
+            Global_TocManager.Save(int(object_id), TexID)
+
+def SaveImageDDS(filepath, object_id):
+    Entry = Global_TocManager.GetEntry(int(object_id), TexID)
+    if Entry != None:
+        if len(filepath) > 1:
+            PrettyPrint(f"Saving image DDS: {filepath} to ID: {object_id}")
+            # get texture data
+            Entry.Load()
+            StingrayTex = Entry.LoadedData
+            with open(filepath, 'r+b') as f:
                 StingrayTex.FromDDS(f.read())
             Toc = MemoryStream(IOMode="write")
             Gpu = MemoryStream(IOMode="write")
