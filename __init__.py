@@ -1595,7 +1595,7 @@ def AddMaterialToBlend(ID, StingrayMat, EmptyMatExists=False):
 
     Entry = Global_TocManager.GetEntry(int(ID), MaterialID)
     if Entry == None:
-        PrettyPrint(f"No Entry Found when getting Material ID: {ID}", "ERROR")
+        PrettyPrint(f"No Entry Found when getting Material ID: {ID}", "warn")
         return
     if Entry.MaterialTemplate != None: CreateAddonMaterial(ID, StingrayMat, mat, Entry)
     else: CreateGameMaterial(StingrayMat, mat)
@@ -4810,42 +4810,115 @@ class LatestReleaseOperator(Operator):
         webbrowser.open(url, new=0, autoraise=True)
         return{'FINISHED'}
 
-class MeshFixOperator(Operator):
+class MeshFixOperator(Operator, ImportHelper):
     bl_label = "Fix Meshes"
     bl_idname = "helldiver2.meshfixtool"
     bl_description = "Auto-fixes meshes in the currently loaded patch. Warning, this may take some time."
 
-    def execute(self, context):
-        if PatchesNotLoaded(self):
-            return {'CANCELLED'}
+    directory: StringProperty(
+        name="Directory",
+        description="Choose a directory",
+        subtype='DIR_PATH'
+    )
+    
+    filter_folder: BoolProperty(
+        default=True,
+        options={'HIDDEN'}
+    )
+    
+    use_filter_folder = True
+    def execute(self, context):   
+        path = self.directory
+        output = RepatchMeshes(self, path)
+        if output == {'CANCELLED'}: return {'CANCELLED'}
+        
+        return{'FINISHED'}
+#endregion
+
+def RepatchMeshes(self, path):
+    if len(bpy.context.scene.objects) > 0:
+        self.report({'ERROR'}, f"Scene is not empty! Please remove all objects in the scene before starting the repatching process!")
+        return{'CANCELLED'}
+    
+    Global_TocManager.UnloadPatches()
+    
+    bpy.context.scene.Hd2ToolPanelSettings.ImportLods = False
+    bpy.context.scene.Hd2ToolPanelSettings.AutoLods = True
+    bpy.context.scene.Hd2ToolPanelSettings.ImportStatic = True
+    
+    PrettyPrint(f"Searching for patch files in: {path}")
+    patchPaths = []
+    LoopPatchPaths(patchPaths, path)
+    PrettyPrint(f"Found Patch Paths: {patchPaths}")
+    if len(patchPaths) == 0:
+        self.report({'ERROR'}, f"No patch files were found in selected path")
+        return{'ERROR'}
+    
+    for hash in Global_ArchiveHashes:
+        path = f"{Global_gamepath}{hash[0]}"
+        if os.path.exists(path):
+            Global_TocManager.LoadArchive(path)
+
+    errors = []
+    for path in patchPaths:
+        PrettyPrint(f"Patching: {path}")
+        Global_TocManager.LoadArchive(path, True, True)
         numMeshesRepatched = 0
+        failed = False
         for entry in Global_TocManager.ActivePatch.TocEntries:
             if entry.TypeID != MeshID:
                 PrettyPrint(f"Skipping {entry.FileID} as it is not a mesh entry")
                 continue
             PrettyPrint(f"Repatching {entry.FileID}")
             numMeshesRepatched += 1
-            entry.Load(False, False)
+            entry.Load(False, True)
+            patchObjects = bpy.context.scene.objects
             fileID = entry.FileID
             typeID = entry.TypeID
             Global_TocManager.RemoveEntryFromPatch(fileID, typeID)
-            Entry = Global_TocManager.GetEntry(fileID, typeID)
-            if Entry == None:
-                self.report({'ERROR'}, f"{entry.FileID}'s archive is not loaded! Make sure it's archive is loaded!")
-                Global_TocManager.AddNewEntryToPatch(entry) # add back the old entry we deleted
-                return{'CANCELLED'}
-            newEntry = Global_TocManager.AddEntryToPatch(fileID, typeID)
-            newEntry.Load(False, False)
-            
-            newEntry.LoadedData.RawMeshes = entry.LoadedData.RawMeshes
-            
-        SaveUnsavedEntries(self)
-        Global_TocManager.PatchActiveArchive()
-        PrettyPrint(f"Repatched {numMeshesRepatched} meshes.")
-        return{'FINISHED'}
-#endregion
+            Global_TocManager.AddEntryToPatch(fileID, typeID)
+            newEntry = Global_TocManager.GetEntry(fileID, typeID)
+            for object in patchObjects:
+                object.select_set(True)
+            if newEntry:
+                newEntry.Save()
+            else:
+                failed = True
+                errors.append([path, fileID])
+            for object in bpy.context.scene.objects:
+                bpy.data.objects.remove(object)
+
+        if not failed:
+            Global_TocManager.PatchActiveArchive()
+            PrettyPrint(f"Repatched {numMeshesRepatched} meshes in patch: {path}")
+        else:
+            PrettyPrint(f"Faield to repatch meshes in patch: {path}", "error")
+        Global_TocManager.UnloadPatches()
+    
+    if len(errors) == 0:
+        PrettyPrint(f"Finished patching {len(patchPaths)} modsets")
+        self.report({'INFO'}, f"Finished Patching meshes with no errors")
+    else:
+        for error in errors:
+            PrettyPrint(f"Failed to patch mesh: {error[1]} in patch: {error[0]}", "error")
+        self.report({'ERROR'}, f"Failed to patch {len(errors)} meshes. Please check logs to see the errors")
 
 #region Operators: Context Menu
+
+def LoopPatchPaths(list, filepath):
+    for path in os.listdir(filepath):
+        path = f"{filepath}\{path}"
+        if Path(path).is_dir():
+            PrettyPrint(f"Looking in folder: {path}")
+            LoopPatchPaths(list, path)
+            continue
+        if "patch_" in path:
+            PrettyPrint(f"Adding Path: {path}")
+            strippedpath = path.replace(".gpu_resources", "").replace(".stream", "")
+            if strippedpath not in list:
+                list.append(strippedpath)
+        else:
+            PrettyPrint(f"Path: {path} is not a patch file. Ignoring file.", "warn")
 
 stored_custom_properties = {}
 class CopyCustomPropertyOperator(Operator):
@@ -5183,7 +5256,7 @@ class HellDivers2ToolsPanel(Panel):
                 col.operator("helldiver2.bulk_load", icon= 'IMPORT', text="Bulk Load")
                 col.operator("helldiver2.search_by_entry", icon= 'VIEWZOOM')
                 #row = box.grid_flow(columns=1)
-                #row.operator("helldiver2.meshfixtool", icon='MODIFIER')
+                row.operator("helldiver2.meshfixtool", icon='MODIFIER')
                 search = mainbox.row()
                 search.label(text=Global_searchpath)
                 search.operator("helldiver2.change_searchpath", icon='FILEBROWSER')
