@@ -4876,16 +4876,23 @@ def RepatchMeshes(self, path):
             numMeshesRepatched += 1
             entry.Load(False, True)
             patchObjects = bpy.context.scene.objects
-            if len(patchObjects) == 0:
+            if len(patchObjects) == 0: # Handle static meshes
                 settings.AutoLods = False
                 settings.ImportStatic = True
                 entry.Load(False, True)
                 patchObjects = bpy.context.scene.objects
+            OldMeshInfoIndex = patchObjects[0]['MeshInfoIndex']
             fileID = entry.FileID
             typeID = entry.TypeID
             Global_TocManager.RemoveEntryFromPatch(fileID, typeID)
             Global_TocManager.AddEntryToPatch(fileID, typeID)
             newEntry = Global_TocManager.GetEntry(fileID, typeID)
+            newEntry.Load(False, False)
+            NewMeshes = newEntry.LoadedData.RawMeshes
+            NewMeshInfoIndex = NewMeshes[0].MeshInfoIndex
+            for mesh in NewMeshes:
+                PrettyPrint(f"Mesh index: {mesh.MeshInfoIndex}")
+            PrettyPrint(f"Old MeshIndex: {OldMeshInfoIndex} New MeshIndex: {NewMeshInfoIndex}")
             for object in patchObjects:
                 object.select_set(True)
             if newEntry:
