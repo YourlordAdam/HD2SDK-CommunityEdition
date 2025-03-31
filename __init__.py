@@ -4855,10 +4855,11 @@ def RepatchMeshes(self, path):
         self.report({'ERROR'}, f"No patch files were found in selected path")
         return{'ERROR'}
     
-    for hash in Global_ArchiveHashes:
-        path = f"{Global_gamepath}{hash[0]}"
-        if os.path.exists(path):
-            Global_TocManager.LoadArchive(path)
+    if len(Global_TocManager.LoadedArchives) < len(Global_ArchiveHashes) - 10:
+        for hash in Global_ArchiveHashes:
+            path = f"{Global_gamepath}{hash[0]}"
+            if os.path.exists(path):
+                Global_TocManager.LoadArchive(path)
 
     errors = []
     for path in patchPaths:
@@ -4889,17 +4890,24 @@ def RepatchMeshes(self, path):
             newEntry = Global_TocManager.GetEntry(fileID, typeID)
             newEntry.Load(False, False)
             NewMeshes = newEntry.LoadedData.RawMeshes
-            NewMeshInfoIndex = NewMeshes[0].MeshInfoIndex
             for mesh in NewMeshes:
-                PrettyPrint(f"Mesh index: {mesh.MeshInfoIndex}")
+                if mesh.LodIndex == 0:
+                    NewMeshInfoIndex = mesh.MeshInfoIndex
+            if not NewMeshInfoIndex:
+                failed = True
+                errors.append([path, fileID, "Could not find LOD0 of base game mesh"])
+                continue
             PrettyPrint(f"Old MeshIndex: {OldMeshInfoIndex} New MeshIndex: {NewMeshInfoIndex}")
+            if OldMeshInfoIndex != NewMeshInfoIndex:
+                PrettyPrint(f"Swapping mesh index to new index", "warn")
+                patchObjects[0]['MeshInfoIndex'] = NewMeshInfoIndex
             for object in patchObjects:
                 object.select_set(True)
             if newEntry:
                 newEntry.Save()
             else:
                 failed = True
-                errors.append([path, fileID])
+                errors.append([path, fileID, "Could not create newEntry"])
             for object in bpy.context.scene.objects:
                 bpy.data.objects.remove(object)
 
@@ -4911,11 +4919,11 @@ def RepatchMeshes(self, path):
         Global_TocManager.UnloadPatches()
     
     if len(errors) == 0:
-        PrettyPrint(f"Finished patching {len(patchPaths)} modsets")
-        self.report({'INFO'}, f"Finished Patching meshes with no errors")
+        PrettyPrint(f"Finished repatching {len(patchPaths)} modsets")
+        self.report({'INFO'}, f"Finished Repatching meshes with no errors")
     else:
         for error in errors:
-            PrettyPrint(f"Failed to patch mesh: {error[1]} in patch: {error[0]}", "error")
+            PrettyPrint(f"Failed to patch mesh: {error[1]} in patch: {error[0]} Error: {error[2]}", "error")
         self.report({'ERROR'}, f"Failed to patch {len(errors)} meshes. Please check logs to see the errors")
 
 #region Operators: Context Menu
