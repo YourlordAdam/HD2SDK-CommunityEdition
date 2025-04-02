@@ -4842,26 +4842,29 @@ def RepatchMeshes(self, path):
             Global_TocManager.RemoveEntryFromPatch(fileID, typeID)
             Global_TocManager.AddEntryToPatch(fileID, typeID)
             newEntry = Global_TocManager.GetEntry(fileID, typeID)
+            if newEntry:
+                PrettyPrint(f"Entry successfully created")
+            else:
+                failed = True
+                errors.append([path, fileID, "Could not create newEntry", "error"])
+                continue
             newEntry.Load(False, False)
             NewMeshes = newEntry.LoadedData.RawMeshes
+            NewMeshInfoIndex = ""
             for mesh in NewMeshes:
                 if mesh.LodIndex == 0:
                     NewMeshInfoIndex = mesh.MeshInfoIndex
-            if not NewMeshInfoIndex:
-                failed = True
-                errors.append([path, fileID, "Could not find LOD0 of base game mesh"])
-                continue
-            PrettyPrint(f"Old MeshIndex: {OldMeshInfoIndex} New MeshIndex: {NewMeshInfoIndex}")
-            if OldMeshInfoIndex != NewMeshInfoIndex:
-                PrettyPrint(f"Swapping mesh index to new index", "warn")
-                patchObjects[0]['MeshInfoIndex'] = NewMeshInfoIndex
+            if NewMeshInfoIndex == "": # if the index is still a string, we couldn't find it
+                PrettyPrint(f"Could not find LOD 0 for mesh: {fileID}. Skipping mesh index checks", "warn")
+                errors.append([path, fileID, "Could not find LOD 0 for mesh so LOD index updates did not occur. This may be intended", "warn"])
+            else:
+                PrettyPrint(f"Old MeshIndex: {OldMeshInfoIndex} New MeshIndex: {NewMeshInfoIndex}")
+                if OldMeshInfoIndex != NewMeshInfoIndex:
+                    PrettyPrint(f"Swapping mesh index to new index", "warn")
+                    patchObjects[0]['MeshInfoIndex'] = NewMeshInfoIndex
             for object in patchObjects:
                 object.select_set(True)
-            if newEntry:
-                newEntry.Save()
-            else:
-                failed = True
-                errors.append([path, fileID, "Could not create newEntry"])
+            newEntry.Save()
             for object in bpy.context.scene.objects:
                 bpy.data.objects.remove(object)
 
@@ -4877,7 +4880,7 @@ def RepatchMeshes(self, path):
         self.report({'INFO'}, f"Finished Repatching meshes with no errors")
     else:
         for error in errors:
-            PrettyPrint(f"Failed to patch mesh: {error[1]} in patch: {error[0]} Error: {error[2]}", "error")
+            PrettyPrint(f"Failed to patch mesh: {error[1]} in patch: {error[0]} Error: {error[2]}", error[3])
         self.report({'ERROR'}, f"Failed to patch {len(errors)} meshes. Please check logs to see the errors")
 
 #region Operators: Context Menu
