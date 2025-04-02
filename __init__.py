@@ -3000,36 +3000,19 @@ class StingrayMeshFile:
 
     def CreateOrderedMeshList(self):
         # re-order the meshes to match the vertex order (this is mainly for writing)
-        # man this code is ass, there has to be a better way to do this, but i am stupid af frfr no cap
-        OrderedMeshes = [ [[], []] for n in range(len(self.StreamInfoArray))]
-        VertOrderedMeshes_flat = []
-        IndexOrderedMeshes_flat = []
-        while len(VertOrderedMeshes_flat) != len(self.RawMeshes):
-            smallest_vert_mesh = None
-            smallest_index_mesh = None
-            for mesh in self.RawMeshes:
-                mesh_info   = self.MeshInfoArray[self.DEV_MeshInfoMap[mesh.MeshInfoIndex]]
-                if mesh not in VertOrderedMeshes_flat:
-                    if smallest_vert_mesh == None:
-                        smallest_vert_mesh = mesh
-                    else:
-                        smallest_mesh_info   = self.MeshInfoArray[self.DEV_MeshInfoMap[smallest_vert_mesh.MeshInfoIndex]]
-                        if mesh_info.Sections[0].VertexOffset < smallest_mesh_info.Sections[0].VertexOffset:
-                            smallest_vert_mesh = mesh
-
-                if mesh not in IndexOrderedMeshes_flat:
-                    if smallest_index_mesh == None:
-                        smallest_index_mesh = mesh
-                    else:
-                        smallest_mesh_info   = self.MeshInfoArray[self.DEV_MeshInfoMap[smallest_index_mesh.MeshInfoIndex]]
-                        if mesh_info.Sections[0].IndexOffset < smallest_mesh_info.Sections[0].IndexOffset:
-                            smallest_index_mesh = mesh
-            mesh_info   = self.MeshInfoArray[self.DEV_MeshInfoMap[smallest_vert_mesh.MeshInfoIndex]]
-            OrderedMeshes[mesh_info.StreamIndex][0].append(smallest_vert_mesh)
-            mesh_info   = self.MeshInfoArray[self.DEV_MeshInfoMap[smallest_index_mesh.MeshInfoIndex]]
-            OrderedMeshes[mesh_info.StreamIndex][1].append(smallest_index_mesh)
-            VertOrderedMeshes_flat.append(smallest_vert_mesh)
-            IndexOrderedMeshes_flat.append(smallest_index_mesh)
+        meshes_ordered_by_vert = [
+            sorted(
+                [mesh for mesh in self.RawMeshes if self.MeshInfoArray[self.DEV_MeshInfoMap[mesh.MeshInfoIndex]].StreamIndex == index],
+                key=lambda mesh: self.MeshInfoArray[self.DEV_MeshInfoMap[mesh.MeshInfoIndex]].Sections[0].VertexOffset
+            ) for index in range(len(self.StreamInfoArray))
+        ]
+        meshes_ordered_by_index = [
+            sorted(
+                [mesh for mesh in self.RawMeshes if self.MeshInfoArray[self.DEV_MeshInfoMap[mesh.MeshInfoIndex]].StreamIndex == index],
+                key=lambda mesh: self.MeshInfoArray[self.DEV_MeshInfoMap[mesh.MeshInfoIndex]].Sections[0].IndexOffset
+            ) for index in range(len(self.StreamInfoArray))
+        ]
+        OrderedMeshes = [list(a) for a in zip(meshes_ordered_by_vert, meshes_ordered_by_index)]
 
         # set 32 bit face indices if needed
         for stream_idx in range(len(OrderedMeshes)):
