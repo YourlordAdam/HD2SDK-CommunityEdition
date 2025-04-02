@@ -2569,8 +2569,7 @@ class RawMeshClass:
 class SerializeFunctions:
     
     def SerializePositionComponent(gpu, mesh, component, vidx):
-        pos = component.SerializeComponent(gpu, mesh.VertexPositions[vidx])
-        if gpu.IsReading(): mesh.VertexPositions[vidx] = pos[:3]
+        mesh.VertexPositions[vidx] = component.SerializeComponent(gpu, mesh.VertexPositions[vidx])
     
     def SerializeNormalComponent(gpu, mesh, component, vidx):
         norm = component.SerializeComponent(gpu, mesh.VertexNormals[vidx])
@@ -2582,25 +2581,20 @@ class SerializeFunctions:
                 mesh.VertexNormals[vidx] = norm
     
     def SerializeTangentComponent(gpu, mesh, component, vidx):
-        tangent = component.SerializeComponent(gpu, mesh.VertexTangents[vidx])
-        if tangent != None and gpu.IsReading(): mesh.VertexTangents[vidx] = tangent[:3]
+        mesh.VertexTangents[vidx] = component.SerializeComponent(gpu, mesh.VertexTangents[vidx])
     
     def SerializeBiTangentComponent(gpu, mesh, component, vidx):
-        bitangent = component.SerializeComponent(gpu, mesh.VertexBiTangents[vidx])
-        if bitangent != None and gpu.IsReading(): mesh.VertexBiTangents[vidx] = bitangent[:3]
+        mesh.VertexBiTangents[vidx] = component.SerializeComponent(gpu, mesh.VertexBiTangents[vidx])
     
     def SerializeUVComponent(gpu, mesh, component, vidx):
-        uv = component.SerializeComponent(gpu, mesh.VertexUVs[component.Index][vidx])
-        if gpu.IsReading(): mesh.VertexUVs[component.Index][vidx] = uv[:2]
+        mesh.VertexUVs[component.Index][vidx] = component.SerializeComponent(gpu, mesh.VertexUVs[component.Index][vidx])
     
     def SerializeColorComponent(gpu, mesh, component, vidx):
-        color = component.SerializeComponent(gpu, mesh.VertexColors[vidx])
-        if color != None and gpu.IsReading(): mesh.VertexColors[vidx] = color[:4]
+        mesh.VertexColors[vidx] = component.SerializeComponent(gpu, mesh.VertexColors[vidx])
     
     def SerializeBoneIndexComponent(gpu, mesh, component, vidx):
         try:
-            ret = component.SerializeComponent(gpu, mesh.VertexBoneIndices[component.Index][vidx])
-            if gpu.IsReading(): mesh.VertexBoneIndices[component.Index][vidx] = ret
+             mesh.VertexBoneIndices[component.Index][vidx] = component.SerializeComponent(gpu, mesh.VertexBoneIndices[component.Index][vidx])
         except:
             raise Exception(f"Vertex bone index out of range. Component index: {component.Index} vidx: {vidx}")
     
@@ -2609,8 +2603,7 @@ class SerializeFunctions:
             PrettyPrint("Multiple weight indices are unsupported!", "warn")
             gpu.seek(gpu.tell()+component.GetSize())
         else:
-            ret = component.SerializeComponent(gpu, mesh.VertexWeights[vidx])
-            if gpu.IsReading(): mesh.VertexWeights[vidx] = ret
+            mesh.VertexWeights[vidx] = component.SerializeComponent(gpu, mesh.VertexWeights[vidx])
             
             
     def SerializeFloatComponent(f, value):
@@ -2629,7 +2622,7 @@ class SerializeFunctions:
             b = min(255, int(value[2]*255))
             a = min(255, int(value[3]*255))
             value = f.vec4_uint8([r,g,b,a])
-        if f.IsWriting():
+        else:
             value = f.vec4_uint8([r,g,b,a])
             value[0] = min(1, float(value[0]/255))
             value[1] = min(1, float(value[1]/255))
@@ -3211,6 +3204,7 @@ def LoadStingrayMesh(ID, TocData, GpuData, StreamData, Reload, MakeBlendObject):
     return StingrayMesh
 
 def SaveStingrayMesh(self, ID, TocData, GpuData, StreamData, StingrayMesh):
+    start = time.time()
     model = GetObjectsMeshData()
     FinalMeshes = [mesh for mesh in StingrayMesh.RawMeshes]
     for mesh in model:
@@ -3233,6 +3227,7 @@ def SaveStingrayMesh(self, ID, TocData, GpuData, StreamData, StingrayMesh):
     toc  = MemoryStream(IOMode = "write")
     gpu  = MemoryStream(IOMode = "write")
     StingrayMesh.Serialize(toc, gpu)
+    PrettyPrint(f"Time to save mesh: {time.time()-start}")
     return [toc.Data, gpu.Data, b""]
 
 #endregion

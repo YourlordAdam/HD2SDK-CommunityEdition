@@ -58,9 +58,9 @@ class MemoryStream:
         self.Location += length
 
     def serialize(self, value, format, size):
-        if self.IsReading():
+        if self.reading:
             return struct.unpack(format, self.read(size))[0]
-        elif self.IsWriting():
+        else:
             self.write(struct.pack(format, value))
             return value
 
@@ -155,9 +155,9 @@ class MemoryStream:
         if len(value) != size:
             value = bytearray(size)
 
-        if self.IsReading():
+        if self.reading:
             return bytearray(self.read(size))
-        elif self.IsWriting():
+        else:
             self.write(value)
             return bytearray(value)
         return value
