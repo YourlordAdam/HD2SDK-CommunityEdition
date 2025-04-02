@@ -51,9 +51,6 @@ class MemoryStream:
 
     def write(self, bytes): # Write Bytes To Stream
         length = len(bytes)
-        if self.Location + length > len(self.Data):
-            missing_bytes = (self.Location + length) - len(self.Data)
-            self.Data.extend(bytearray(missing_bytes))
         self.Data[self.Location:self.Location+length] = bytes
         self.Location += length
 
