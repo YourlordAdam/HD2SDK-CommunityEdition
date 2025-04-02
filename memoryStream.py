@@ -4,30 +4,37 @@ class MemoryStream:
     def __init__(self, Data=b"", IOMode = "read"):
         self.Location = 0
         self.Data = bytearray(Data)
-        self.IOMode = IOMode
-        self.Endian = "<"
+        if IOMode == "read":
+            self.reading = True
+        else:
+            self.reading = False
+        #self.IOMode = IOMode
+        #self.Endian = "<"
 
     def open(self, Data, IOMode = "read"): # Open Stream
         self.Data = bytearray(Data)
-        self.IOMode = IOMode
+        if IOMode == "read":
+            self.reading = True
+        else:
+            self.reading = False
 
     def SetReadMode(self):
-        self.IOMode = "read"
+        self.reading = True
 
     def SetWriteMode(self):
-        self.IOMode = "write"
+        self.reading = False
 
     def IsReading(self):
-        return self.IOMode == "read"
+        return self.reading
 
     def IsWriting(self):
-        return self.IOMode == "write"
+        return not self.reading
 
     def seek(self, Location): # Go To Position In Stream
         self.Location = Location
         if self.Location > len(self.Data):
             missing_bytes = self.Location - len(self.Data)
-            self.Data += bytearray(missing_bytes)
+            self.Data.extend(bytearray(missing_bytes))
 
     def tell(self): # Get Position In Stream
         return self.Location
@@ -46,12 +53,11 @@ class MemoryStream:
         length = len(bytes)
         if self.Location + length > len(self.Data):
             missing_bytes = (self.Location + length) - len(self.Data)
-            self.Data += bytearray(missing_bytes)
-        self.Data[self.Location:self.Location+length] = bytearray(bytes)
+            self.Data.extend(bytearray(missing_bytes))
+        self.Data[self.Location:self.Location+length] = bytes
         self.Location += length
 
     def serialize(self, value, format, size):
-        format = self.Endian+format
         if self.IsReading():
             return struct.unpack(format, self.read(size))[0]
         elif self.IsWriting():
@@ -59,39 +65,40 @@ class MemoryStream:
             return value
 
     def int8(self, value):
-        return self.serialize(value, 'b', 1)
+        return self.serialize(value, '<b', 1)
 
     def uint8(self, value):
-        return self.serialize(value, 'B', 1)
+        return self.serialize(value, '<B', 1)
 
     def int16(self, value):
-        return self.serialize(value, 'h', 2)
+        return self.serialize(value, '<h', 2)
 
     def uint16(self, value):
-        return self.serialize(value, 'H', 2)
+        return self.serialize(value, '<H', 2)
 
     def int32(self, value):
-        return self.serialize(value, 'i', 4)
+        return self.serialize(value, '<i', 4)
 
     def uint32(self, value):
-        return self.serialize(value, 'I', 4)
+        return self.serialize(value, '<I', 4)
 
     def int64(self, value):
-        return self.serialize(value, 'q', 8)
+        return self.serialize(value, '<q', 8)
 
     def uint64(self, value):
-        return self.serialize(value, 'Q', 8)
+        return self.serialize(value, '<Q', 8)
 
     def float16(self, value):
-        return self.serialize(value, 'e', 2)
+        return self.serialize(value, '<e', 2)
 
     def float32(self, value):
-        return self.serialize(value, 'f', 4)
+        return self.serialize(value, '<f', 4)
 
     def float64(self, value):
-        return self.serialize(value, 'd', 8)
+        return self.serialize(value, '<d', 8)
 
     def __resize_vec(self, value, length):
+        assert len(value) == length, "MISMATCHED LENGTH"
         value = list(value)
         if len(value) < length:
             dif = length - len(value)
@@ -101,35 +108,35 @@ class MemoryStream:
         return value
     
     def vec2_float(self, value):
-        value = self.__resize_vec(value, 2)
+        #value = self.__resize_vec(value, 2)
         return [self.float32(value[0]), self.float32(value[1])]
 
     def vec3_float(self, value):
-        value = self.__resize_vec(value, 3)
+        #value = self.__resize_vec(value, 3)
         return [self.float32(value[0]), self.float32(value[1]), self.float32(value[2])]
 
     def vec2_half(self, value):
-        value = self.__resize_vec(value, 2)
+        #value = self.__resize_vec(value, 2)
         return [self.float16(value[0]), self.float16(value[1])]
 
     def vec3_half(self, value):
-        value = self.__resize_vec(value, 3)
+        #value = self.__resize_vec(value, 3)
         return [self.float16(value[0]), self.float16(value[1]), self.float16(value[2])]
 
     def vec4_half(self, value):
-        value = self.__resize_vec(value, 4)
+        #value = self.__resize_vec(value, 4)
         return [self.float16(value[0]), self.float16(value[1]), self.float16(value[2]), self.float16(value[3])]
 
     def vec4_uint8(self, value):
-        value = self.__resize_vec(value, 4)
+        #value = self.__resize_vec(value, 4)
         return [self.uint8(value[0]), self.uint8(value[1]), self.uint8(value[2]), self.uint8(value[3])]
 
     def vec4_uint16(self, value):
-        value = self.__resize_vec(value, 4)
+        #value = self.__resize_vec(value, 4)
         return [self.uint16(value[0]), self.uint16(value[1]), self.uint16(value[2]), self.uint16(value[3])]
 
     def vec4_uint32(self, value):
-        value = self.__resize_vec(value, 4)
+        #value = self.__resize_vec(value, 4)
         return [self.uint32(value[0]), self.uint32(value[1]), self.uint32(value[2]), self.uint32(value[3])]
 
     def array(self, type, value, size = -1):
