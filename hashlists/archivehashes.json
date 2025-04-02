@@ -370,7 +370,6 @@
     "Pistol": {
         "bf2250de0b17285c": "P-2 Peacemaker",
         "99f20df1c4cf885a": "P-19 Redeemer",
-        "393f7ce48d9515de": "P-4 Senator(barrel)",
         "94b554570b12c088": "P-4 Senator",
         "b47514ae19a494f0": "P-113 Verdict"
     },
@@ -434,6 +433,26 @@
         "754f8570c7a383a6": "Duckbill Muzzle",
         "8475f912fb83a589":	"Laser Light Combo",
         "3968938b8147df7c":	"Solo Light",
-        "75cf73a0819bf767":	"Bayonet"
+        "75cf73a0819bf767":	"Bayonet",
+        "393f7ce48d9515de": "P-4 Senator Barrel"
+    },
+
+    "Backpack": {
+        "28812689506a3e9c":	"AC-8 Autocannon Pack",
+        "49875503e219e80d":	"AC-8 Autocannon Pack (duplicate)",
+        "519980a75ebd50ad":	"B-1 Supply Pack",
+        "15eb7241c3616351":	"GR-8 Recoilless Rifle Pack",
+        "e12f82d7c0c7bc63":	"RL-77 Airburst Rocket Launcher Pack",
+        "530bb611a14b6ce3":	"FAF-14 Spear Pack",
+        "3e78581fdab81a73":	"LIFT-850 Jump Pack",
+        "47b43a883caae42c":	"SH-32 Shield Generator Pack",
+        "fc1a5bf2f3ff15df":	"SH-20 Ballistic Shield Backpack",
+        "32cb44321da1b5a0":	"AX/LAS-5 Guard Dog Rover",
+        "4bfe33f08f372ad3":	"AX/AR-23 Guard Dog Drone",
+        "be6c260fadcb8719": "AX/AR-23 Guard Dog",
+        "35f4ca4fa00d380a":	"AX/TX-13 Guard Dog Dog Breath Backpack",
+        "9514b4daa7f4c881":	"Terminid Larva",
+        "346d785d6ca13ff4":	"B-100 Portable Hellbomb",
+        "1dfe6f7a3c7ebefb":	"LIFT-860 Hover Pack"
     }
 }
