@@ -1765,17 +1765,17 @@ def SetupAdvancedBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separate
     nodeTree.links.new(inputNode.outputs['Color/Emission Mask'], bsdf.inputs['Base Color'])
     nodeTree.links.new(inputNode.outputs['Metallic'], bsdf.inputs['Metallic'])
 
-    nodeTree.interface.new_socket(name="Roughness", in_out ="INPUT", socket_type="NodeSocketFloat").hide_value = True
-    mat.node_tree.links.new(TextureNodes[2].outputs['Alpha'], group.inputs['Roughness'])
-    nodeTree.links.new(inputNode.outputs['Roughness'], bsdf.inputs['Roughness'])
+    RoughnessSocket = nodeTree.interface.new_socket(name="Normal/AO/Roughness (Alpha)", in_out ="INPUT", socket_type="NodeSocketFloat").hide_value = True
+    mat.node_tree.links.new(TextureNodes[2].outputs['Alpha'], group.inputs['Normal/AO/Roughness (Alpha)'])
+    nodeTree.links.new(inputNode.outputs['Normal/AO/Roughness (Alpha)'], bsdf.inputs['Roughness'])
 
     multiplyEmission = nodeTree.nodes.new('ShaderNodeMath')
     multiplyEmission.location = (-350, -350)
     multiplyEmission.operation = 'MULTIPLY'
     multiplyEmission.inputs[1].default_value = 0
-    nodeTree.interface.new_socket(name="Emission Mask", in_out ="INPUT", socket_type="NodeSocketFloat").hide_value = True
-    mat.node_tree.links.new(TextureNodes[5].outputs['Alpha'], group.inputs['Emission Mask'])
-    nodeTree.links.new(inputNode.outputs['Emission Mask'], multiplyEmission.inputs[0])
+    nodeTree.interface.new_socket(name="Color/Emission Mask (Alpha)", in_out ="INPUT", socket_type="NodeSocketFloat").hide_value = True
+    mat.node_tree.links.new(TextureNodes[5].outputs['Alpha'], group.inputs['Color/Emission Mask (Alpha)'])
+    nodeTree.links.new(inputNode.outputs['Color/Emission Mask (Alpha)'], multiplyEmission.inputs[0])
     nodeTree.links.new(multiplyEmission.outputs['Value'], bsdf.inputs['Emission Strength'])
     
     nodeTree.links.new(bsdf.outputs['BSDF'], outputNode.inputs['Surface'])
