@@ -2706,7 +2706,6 @@ class StingrayMeshFile:
     # -- Serialize Mesh -- #
     def Serialize(self, f, gpu, redo_offsets = False):
         PrettyPrint("Serialize")
-        start = time.time()
         if f.IsWriting() and not redo_offsets:
             # duplicate bone info sections if needed
             temp_boneinfos = [None for n in range(len(self.BoneInfoArray))]
@@ -2899,10 +2898,6 @@ class StingrayMeshFile:
 
         self.MeshInfoOffsets  = [f.uint32(Offset) for Offset in self.MeshInfoOffsets]
         self.MeshInfoUnk      = [f.uint32(Unk) for Unk in self.MeshInfoUnk]
-        if f.IsReading():
-            print("Read "+str(self.MeshInfoOffsets))
-        else:
-            print("Write "+str(self.MeshInfoOffsets))
         for mesh_idx in range(self.NumMeshes):
             if f.IsReading(): f.seek(self.MeshInfoOffset+self.MeshInfoOffsets[mesh_idx])
             else            : self.MeshInfoOffsets[mesh_idx] = f.tell() - self.MeshInfoOffset
@@ -2925,7 +2920,6 @@ class StingrayMeshFile:
         if f.IsWriting(): self.EndingOffset = f.tell()
         self.EndingBytes        = f.uint64(self.NumMeshes)
         if redo_offsets:
-            PrettyPrint(f"Time {time.time()-start}")
             return self
 
         # Serialize Data
@@ -2934,21 +2928,16 @@ class StingrayMeshFile:
         # TODO: update offsets only instead of re-writing entire file
         if f.IsWriting() and not redo_offsets:
             f.seek(0)
-            start = time.time()
-            PrettyPrint("Redo Offsets")
             self.Serialize(f, gpu, True)
-            PrettyPrint(f"Time: {time.time()-start}")
         return self
 
     def SerializeGpuData(self, gpu):
         PrettyPrint("SerializeGpuData")
-        start = time.time()
         # Init Raw Meshes If Reading
         if gpu.IsReading():
             self.InitRawMeshes()
         # re-order the meshes to match the vertex order (this is mainly for writing)
         OrderedMeshes = self.CreateOrderedMeshList()
-        #OrderedMeshes = self.RawMeshes
         # Create Vertex Components If Writing
         if gpu.IsWriting():
             self.SetupRawMeshComponents(OrderedMeshes)
@@ -2962,12 +2951,9 @@ class StingrayMeshFile:
             else:
                 self.SerializeVertexBuffer(gpu, Stream_Info, stream_idx, OrderedMeshes)
                 self.SerializeIndexBuffer(gpu, Stream_Info, stream_idx, OrderedMeshes)
-        PrettyPrint(f"Time: {time.time()-start}")
 
     def SerializeIndexBuffer(self, gpu, Stream_Info, stream_idx, OrderedMeshes):
         # get indices
-        start = time.time()
-        PrettyPrint("SerializeIndexBuffer")
         IndexOffset  = 0
         CompiledIncorrectly = False
         if gpu.IsWriting():Stream_Info.IndexBufferOffset = gpu.tell()
@@ -3044,12 +3030,9 @@ class StingrayMeshFile:
                     for Section in Mesh_Info.Sections:
                         Section.NumVertices = RealNumVerts
                     self.ReInitRawMeshVerts(mesh)
-        PrettyPrint(f"Time: {time.time()-start}")
 
     def SerializeVertexBuffer(self, gpu, Stream_Info, stream_idx, OrderedMeshes):
         # Vertex Buffer
-        PrettyPrint("SerializeVertexBuffer")
-        start = time.time()
         VertexOffset = 0
         if gpu.IsWriting(): Stream_Info.VertexBufferOffset = gpu.tell()
         for mesh in OrderedMeshes[stream_idx][0]:
@@ -3077,7 +3060,7 @@ class StingrayMeshFile:
             gpu.seek(ceil(float(gpu.tell())/16)*16)
             Stream_Info.VertexBufferSize    = gpu.tell() - Stream_Info.VertexBufferOffset
             Stream_Info.NumVertices         = VertexOffset
-        PrettyPrint(f"Time: {time.time() - start}")
+            
     def CreateOrderedMeshList(self):
         # re-order the meshes to match the vertex order (this is mainly for writing)
         meshes_ordered_by_vert = [
@@ -3204,7 +3187,6 @@ def LoadStingrayMesh(ID, TocData, GpuData, StreamData, Reload, MakeBlendObject):
     return StingrayMesh
 
 def SaveStingrayMesh(self, ID, TocData, GpuData, StreamData, StingrayMesh):
-    start = time.time()
     model = GetObjectsMeshData()
     FinalMeshes = [mesh for mesh in StingrayMesh.RawMeshes]
     for mesh in model:
@@ -3227,7 +3209,6 @@ def SaveStingrayMesh(self, ID, TocData, GpuData, StreamData, StingrayMesh):
     toc  = MemoryStream(IOMode = "write")
     gpu  = MemoryStream(IOMode = "write")
     StingrayMesh.Serialize(toc, gpu)
-    PrettyPrint(f"Time to save mesh: {time.time()-start}")
     return [toc.Data, gpu.Data, b""]
 
 #endregion
