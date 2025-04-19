@@ -4,7 +4,7 @@
         "562a45e9bc984eb9": "B-01 Tactical (Variation 2)",
         "6cd3d55c05d4eac1": "B-01 Tactical (Variation 3)",
         "519cc1ec2eb56e1d": "B-01 Tactical (Variation 4)",
-        "58e4bd4b2278d15c": "TR-7 Ambassador of the Brand",
+        "7dc940635e3dd573": "TR-7 Ambassador of the Brand",
         "2d25ef67b7d87ea3": "CM-09 Bonesnapper",
         "31d06451a09679f1": "FS-05 Marksman",
         "8670598c1f4462dc": "FS-05 Marksman",
@@ -109,7 +109,7 @@
         "e4e4639f4365ca4e": "SA-32 Dynamo",
         "e9f7da425997f38b": "CW-22 Kodiak",
         "0290d8011fce62ef": "FS-38 Eradicator",
-        "7c3496a468bf0028": "CM-14 Physician",
+        "1bf281b613081b05": "CM-14 Physician",
         "0c7ecd8156d49fe9": "PH-202 Twigsnapper",
         "38a82f5be66c5b36": "CE-27 Ground Breaker",
         "5c82005edd85558c": "PH-56 Jaguar",
@@ -139,7 +139,7 @@
         "ff2a9db5dfe875d3": "FS-11 Executioner",
         "3196ede0c925ba83": "SA-12 Servo-Assisted",
         "9d538582c1cd96b8": "DP-40 Hero of the Federation",
-        "1bf281b613081b05": "TR-117 Alpha Commander",
+        "7c3496a468bf0028": "TR-117 Alpha Commander",
         "a0ce7d80e81fc62e": "TR-7 Ambassador of the Brand",
         "7cec1f264535f3c8": "TR-9 Cavalier of Democracy",
         "71aa8c9bf9a0aef0": "I-44 Salamander",
@@ -173,6 +173,7 @@
     },
 
     "Cape": {
+        "0fe88d9b08f6fe80": "Foe Smasher",
         "11a35cf5481b8b04": "Blazing Samaritan (Set 1)",
         "2c1d2e2106bea32b": "Mantle of True Citizenship (Set 1)",
         "47c136bfceca8c87": "Unblemished Allegiance (Old Unused)",
@@ -328,6 +329,7 @@
     "Explosive": {
         "e0807831d6f456c8": "R-36 Eruptor",
         "ba40a2814d01bda0": "CB-9 Exploding Crossbow",
+        "10a7605527187ef5": "JAR-5 Dominator",
         "b779a2f9d0928e03": "GP-20 Ultimatum"
     },
     "Marksman Rifle": {
@@ -370,7 +372,6 @@
     "Pistol": {
         "bf2250de0b17285c": "P-2 Peacemaker",
         "99f20df1c4cf885a": "P-19 Redeemer",
-        "393f7ce48d9515de": "P-4 Senator(barrel)",
         "94b554570b12c088": "P-4 Senator",
         "b47514ae19a494f0": "P-113 Verdict"
     },
@@ -434,6 +435,26 @@
         "754f8570c7a383a6": "Duckbill Muzzle",
         "8475f912fb83a589":	"Laser Light Combo",
         "3968938b8147df7c":	"Solo Light",
-        "75cf73a0819bf767":	"Bayonet"
+        "75cf73a0819bf767":	"Bayonet",
+        "393f7ce48d9515de": "P-4 Senator Barrel"
+    },
+
+    "Backpack": {
+        "28812689506a3e9c":	"AC-8 Autocannon Pack",
+        "49875503e219e80d":	"AC-8 Autocannon Pack (duplicate)",
+        "519980a75ebd50ad":	"B-1 Supply Pack",
+        "15eb7241c3616351":	"GR-8 Recoilless Rifle Pack",
+        "e12f82d7c0c7bc63":	"RL-77 Airburst Rocket Launcher Pack",
+        "530bb611a14b6ce3":	"FAF-14 Spear Pack",
+        "3e78581fdab81a73":	"LIFT-850 Jump Pack",
+        "47b43a883caae42c":	"SH-32 Shield Generator Pack",
+        "fc1a5bf2f3ff15df":	"SH-20 Ballistic Shield Backpack",
+        "32cb44321da1b5a0":	"AX/LAS-5 Guard Dog Rover",
+        "4bfe33f08f372ad3":	"AX/AR-23 Guard Dog Drone",
+        "be6c260fadcb8719": "AX/AR-23 Guard Dog",
+        "35f4ca4fa00d380a":	"AX/TX-13 Guard Dog Dog Breath Backpack",
+        "9514b4daa7f4c881":	"Terminid Larva",
+        "346d785d6ca13ff4":	"B-100 Portable Hellbomb",
+        "1dfe6f7a3c7ebefb":	"LIFT-860 Hover Pack"
     }
 }
