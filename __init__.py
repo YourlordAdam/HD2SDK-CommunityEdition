@@ -1766,17 +1766,17 @@ def SetupAdvancedBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separate
     nodeTree.links.new(inputNode.outputs['Color/Emission Mask'], bsdf.inputs['Base Color'])
     nodeTree.links.new(inputNode.outputs['Metallic'], bsdf.inputs['Metallic'])
 
-    nodeTree.interface.new_socket(name="Roughness", in_out ="INPUT", socket_type="NodeSocketFloat").hide_value = True
-    mat.node_tree.links.new(TextureNodes[2].outputs['Alpha'], group.inputs['Roughness'])
-    nodeTree.links.new(inputNode.outputs['Roughness'], bsdf.inputs['Roughness'])
+    RoughnessSocket = nodeTree.interface.new_socket(name="Normal/AO/Roughness (Alpha)", in_out ="INPUT", socket_type="NodeSocketFloat").hide_value = True
+    mat.node_tree.links.new(TextureNodes[2].outputs['Alpha'], group.inputs['Normal/AO/Roughness (Alpha)'])
+    nodeTree.links.new(inputNode.outputs['Normal/AO/Roughness (Alpha)'], bsdf.inputs['Roughness'])
 
     multiplyEmission = nodeTree.nodes.new('ShaderNodeMath')
     multiplyEmission.location = (-350, -350)
     multiplyEmission.operation = 'MULTIPLY'
     multiplyEmission.inputs[1].default_value = 0
-    nodeTree.interface.new_socket(name="Emission Mask", in_out ="INPUT", socket_type="NodeSocketFloat").hide_value = True
-    mat.node_tree.links.new(TextureNodes[5].outputs['Alpha'], group.inputs['Emission Mask'])
-    nodeTree.links.new(inputNode.outputs['Emission Mask'], multiplyEmission.inputs[0])
+    nodeTree.interface.new_socket(name="Color/Emission Mask (Alpha)", in_out ="INPUT", socket_type="NodeSocketFloat").hide_value = True
+    mat.node_tree.links.new(TextureNodes[5].outputs['Alpha'], group.inputs['Color/Emission Mask (Alpha)'])
+    nodeTree.links.new(inputNode.outputs['Color/Emission Mask (Alpha)'], multiplyEmission.inputs[0])
     nodeTree.links.new(multiplyEmission.outputs['Value'], bsdf.inputs['Emission Strength'])
     
     nodeTree.links.new(bsdf.outputs['BSDF'], outputNode.inputs['Surface'])
@@ -4829,21 +4829,48 @@ class MeshFixOperator(Operator):
             fileID = entry.FileID
             typeID = entry.TypeID
             Global_TocManager.RemoveEntryFromPatch(fileID, typeID)
-            Entry = Global_TocManager.GetEntry(fileID, typeID)
-            if Entry == None:
-                self.report({'ERROR'}, f"{entry.FileID}'s archive is not loaded! Make sure it's archive is loaded!")
-                Global_TocManager.AddNewEntryToPatch(entry) # add back the old entry we deleted
-                return{'CANCELLED'}
-            newEntry = Global_TocManager.AddEntryToPatch(fileID, typeID)
+            Global_TocManager.AddEntryToPatch(fileID, typeID)
+            newEntry = Global_TocManager.GetEntry(fileID, typeID)
+            if newEntry:
+                PrettyPrint(f"Entry successfully created")
+            else:
+                failed = True
+                errors.append([path, fileID, "Could not create newEntry", "error"])
+                continue
             newEntry.Load(False, False)
-            
-            newEntry.LoadedData.RawMeshes = entry.LoadedData.RawMeshes
-            
-        SaveUnsavedEntries(self)
-        Global_TocManager.PatchActiveArchive()
-        PrettyPrint(f"Repatched {numMeshesRepatched} meshes.")
-        return{'FINISHED'}
-#endregion
+            NewMeshes = newEntry.LoadedData.RawMeshes
+            NewMeshInfoIndex = ""
+            for mesh in NewMeshes:
+                if mesh.LodIndex == 0:
+                    NewMeshInfoIndex = mesh.MeshInfoIndex
+            if NewMeshInfoIndex == "": # if the index is still a string, we couldn't find it
+                PrettyPrint(f"Could not find LOD 0 for mesh: {fileID}. Skipping mesh index checks", "warn")
+                errors.append([path, fileID, "Could not find LOD 0 for mesh so LOD index updates did not occur. This may be intended", "warn"])
+            else:
+                PrettyPrint(f"Old MeshIndex: {OldMeshInfoIndex} New MeshIndex: {NewMeshInfoIndex}")
+                if OldMeshInfoIndex != NewMeshInfoIndex:
+                    PrettyPrint(f"Swapping mesh index to new index", "warn")
+                    patchObjects[0]['MeshInfoIndex'] = NewMeshInfoIndex
+            for object in patchObjects:
+                object.select_set(True)
+            newEntry.Save()
+            for object in bpy.context.scene.objects:
+                bpy.data.objects.remove(object)
+
+        if not failed:
+            Global_TocManager.PatchActiveArchive()
+            PrettyPrint(f"Repatched {numMeshesRepatched} meshes in patch: {path}")
+        else:
+            PrettyPrint(f"Faield to repatch meshes in patch: {path}", "error")
+        Global_TocManager.UnloadPatches()
+    
+    if len(errors) == 0:
+        PrettyPrint(f"Finished repatching {len(patchPaths)} modsets")
+        self.report({'INFO'}, f"Finished Repatching meshes with no errors")
+    else:
+        for error in errors:
+            PrettyPrint(f"Failed to patch mesh: {error[1]} in patch: {error[0]} Error: {error[2]}", error[3])
+        self.report({'ERROR'}, f"Failed to patch {len(errors)} meshes. Please check logs to see the errors")
 
 #region Operators: Context Menu
 
@@ -5114,7 +5141,7 @@ class HellDivers2ToolsPanel(Panel):
         if not OnCorrectBlenderVersion:
             row.label(text="Using Incorrect Blender Version!")
             row = layout.row()
-            row.label(text="Please Use Blender 4.X")
+            row.label(text="Please Use Blender 4.0.X to 4.3.X")
             return
         
         if bpy.app.version[1] > 0:
