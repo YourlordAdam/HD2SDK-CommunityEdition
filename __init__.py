@@ -330,7 +330,8 @@ def duplicate(obj, data=True, actions=True, collection=None):
     if data:
         obj_copy.data = obj_copy.data.copy()
     if actions and obj_copy.animation_data:
-        obj_copy.animation_data.action = obj_copy.animation_data.action.copy()
+        if obj_copy.animation_data.action:
+            obj_copy.animation_data.action = obj_copy.animation_data.action.copy()
     bpy.context.collection.objects.link(obj_copy)
     return obj_copy
 
