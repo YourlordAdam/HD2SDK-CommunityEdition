@@ -4810,22 +4810,79 @@ class LatestReleaseOperator(Operator):
         webbrowser.open(url, new=0, autoraise=True)
         return{'FINISHED'}
 
-class MeshFixOperator(Operator):
+class MeshFixOperator(Operator, ImportHelper):
     bl_label = "Fix Meshes"
     bl_idname = "helldiver2.meshfixtool"
     bl_description = "Auto-fixes meshes in the currently loaded patch. Warning, this may take some time."
 
-    def execute(self, context):
-        if PatchesNotLoaded(self):
-            return {'CANCELLED'}
+    directory: StringProperty(
+        name="Directory",
+        description="Choose a directory",
+        subtype='DIR_PATH'
+    )
+    
+    filter_folder: BoolProperty(
+        default=True,
+        options={'HIDDEN'}
+    )
+    
+    use_filter_folder = True
+    def execute(self, context):   
+        path = self.directory
+        output = RepatchMeshes(self, path)
+        if output == {'CANCELLED'}: return {'CANCELLED'}
+        
+        return{'FINISHED'}
+#endregion
+
+def RepatchMeshes(self, path):
+    if len(bpy.context.scene.objects) > 0:
+        self.report({'ERROR'}, f"Scene is not empty! Please remove all objects in the scene before starting the repatching process!")
+        return{'CANCELLED'}
+    
+    Global_TocManager.UnloadPatches()
+    
+    settings = bpy.context.scene.Hd2ToolPanelSettings
+    settings.ImportLods = False
+    settings.AutoLods = True
+    settings.ImportStatic = False
+    
+    PrettyPrint(f"Searching for patch files in: {path}")
+    patchPaths = []
+    LoopPatchPaths(patchPaths, path)
+    PrettyPrint(f"Found Patch Paths: {patchPaths}")
+    if len(patchPaths) == 0:
+        self.report({'ERROR'}, f"No patch files were found in selected path")
+        return{'ERROR'}
+    
+    if len(Global_TocManager.LoadedArchives) < len(Global_ArchiveHashes) - 10:
+        for hash in Global_ArchiveHashes:
+            path = f"{Global_gamepath}{hash[0]}"
+            if os.path.exists(path):
+                Global_TocManager.LoadArchive(path)
+
+    errors = []
+    for path in patchPaths:
+        PrettyPrint(f"Patching: {path}")
+        Global_TocManager.LoadArchive(path, True, True)
         numMeshesRepatched = 0
+        failed = False
         for entry in Global_TocManager.ActivePatch.TocEntries:
             if entry.TypeID != MeshID:
                 PrettyPrint(f"Skipping {entry.FileID} as it is not a mesh entry")
                 continue
             PrettyPrint(f"Repatching {entry.FileID}")
+            settings.AutoLods = True
+            settings.ImportStatic = False
             numMeshesRepatched += 1
-            entry.Load(False, False)
+            entry.Load(False, True)
+            patchObjects = bpy.context.scene.objects
+            if len(patchObjects) == 0: # Handle static meshes
+                settings.AutoLods = False
+                settings.ImportStatic = True
+                entry.Load(False, True)
+                patchObjects = bpy.context.scene.objects
+            OldMeshInfoIndex = patchObjects[0]['MeshInfoIndex']
             fileID = entry.FileID
             typeID = entry.TypeID
             Global_TocManager.RemoveEntryFromPatch(fileID, typeID)
@@ -4872,6 +4929,21 @@ class MeshFixOperator(Operator):
             PrettyPrint(f"Failed to patch mesh: {error[1]} in patch: {error[0]} Error: {error[2]}", error[3])
         self.report({'ERROR'}, f"Failed to patch {len(errors)} meshes. Please check logs to see the errors")
 
+def LoopPatchPaths(list, filepath):
+    for path in os.listdir(filepath):
+        path = f"{filepath}\{path}"
+        if Path(path).is_dir():
+            PrettyPrint(f"Looking in folder: {path}")
+            LoopPatchPaths(list, path)
+            continue
+        if "patch_" in path:
+            PrettyPrint(f"Adding Path: {path}")
+            strippedpath = path.replace(".gpu_resources", "").replace(".stream", "")
+            if strippedpath not in list:
+                list.append(strippedpath)
+        else:
+            PrettyPrint(f"Path: {path} is not a patch file. Ignoring file.", "warn")
+            
 #region Operators: Context Menu
 
 stored_custom_properties = {}
