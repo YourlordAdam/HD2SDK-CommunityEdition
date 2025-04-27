@@ -518,8 +518,8 @@ def NameFromMesh(mesh, id, customization_info, bone_names, use_sufix=True):
     name_sufix = "_lod"+str(mesh.LodIndex)
     if mesh.LodIndex == -1:
         name_sufix = "_mesh"+str(mesh.MeshInfoIndex)
-    if mesh.IsPhysicsBody():
-        name_sufix = "_phys"+str(mesh.MeshInfoIndex)
+    if mesh.IsCullingBody():
+        name_sufix = "_culling"+str(mesh.MeshInfoIndex)
     if use_sufix: name = name + name_sufix
 
     if use_sufix and bone_names != None:
@@ -544,7 +544,7 @@ def CreateModel(model, id, customization_info, bone_names, transform_info, bone_
         if not bpy.context.scene.Hd2ToolPanelSettings.ImportLods and mesh.IsLod():
             continue
         # check physics
-        if not bpy.context.scene.Hd2ToolPanelSettings.ImportPhysics and mesh.IsPhysicsBody():
+        if not bpy.context.scene.Hd2ToolPanelSettings.ImportCulling and mesh.IsCullingBody():
             continue
         # check static
         if not bpy.context.scene.Hd2ToolPanelSettings.ImportStatic and mesh.IsStaticMesh():
@@ -585,7 +585,7 @@ def CreateModel(model, id, customization_info, bone_names, transform_info, bone_
             new_object["Z_CustomizationSlot"]     = customization_info.Slot
             new_object["Z_CustomizationWeight"]   = customization_info.Weight
             new_object["Z_CustomizationPieceType"]= customization_info.PieceType
-        if mesh.IsPhysicsBody():
+        if mesh.IsCullingBody():
             new_object.display_type = 'WIRE'
 
         # add object to scene collection
@@ -2519,7 +2519,7 @@ class RawMeshClass:
         self.DEV_BoneInfo      = None
         self.DEV_BoneInfoIndex = 0
         self.DEV_Transform     = None
-    def IsPhysicsBody(self):
+    def IsCullingBody(self):
         IsPhysics = True
         for material in self.Materials:
             if material.MatID != material.DefaultMaterialName:
@@ -2529,7 +2529,7 @@ class RawMeshClass:
         IsLod = True
         if self.LodIndex == 0 or self.LodIndex == -1:
             IsLod = False
-        if self.IsPhysicsBody():
+        if self.IsCullingBody():
             IsLod = False
         return IsLod
     def IsStaticMesh(self):
@@ -5110,7 +5110,7 @@ class Hd2ToolPanelSettings(PropertyGroup):
     ImportMaterials  : BoolProperty(name="Import Materials", description = "Fully import materials by appending the textures utilized, otherwise create placeholders", default = True)
     ImportLods       : BoolProperty(name="Import LODs", description = "Import LODs", default = False)
     ImportGroup0     : BoolProperty(name="Import Group 0 Only", description = "Only import the first vertex group, ignore others", default = True)
-    ImportPhysics    : BoolProperty(name="Import Physics", description = "Import Physics Bodies", default = False)
+    ImportCulling    : BoolProperty(name="Import Culling Bounds", description = "Import Culling Bodies", default = False)
     ImportStatic     : BoolProperty(name="Import Static Meshes", description = "Import Static Meshes", default = False)
     MakeCollections  : BoolProperty(name="Make Collections", description = "Make new collection when importing meshes", default = False)
     Force2UVs        : BoolProperty(name="Force 2 UV Sets", description = "Force at least 2 UV sets, some materials require this", default = True)
@@ -5255,7 +5255,7 @@ class HellDivers2ToolsPanel(Panel):
             row.prop(scene.Hd2ToolPanelSettings, "ImportLods")
             row.prop(scene.Hd2ToolPanelSettings, "ImportGroup0")
             row.prop(scene.Hd2ToolPanelSettings, "MakeCollections")
-            row.prop(scene.Hd2ToolPanelSettings, "ImportPhysics")
+            row.prop(scene.Hd2ToolPanelSettings, "ImportCulling")
             row.prop(scene.Hd2ToolPanelSettings, "ImportStatic")
             row.prop(scene.Hd2ToolPanelSettings, "RemoveGoreMeshes")
             row = mainbox.row(); row.separator(); row.label(text="Export Options"); box = row.box(); row = box.grid_flow(columns=1)
