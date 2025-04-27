@@ -3322,7 +3322,8 @@ def MaterialsNumberNames(self):
             return True
         for slot in mesh.material_slots:
             if slot.material:
-                if not slot.material.name.isnumeric():
+                materialName = slot.material.name
+                if not materialName.isnumeric() and materialName != "StingrayDefaultMaterial":
                     invalidMaterials += 1
             else:
                 invalidMaterials += 1
