@@ -138,12 +138,16 @@ TextureTypeLookup = {
         "",
         "",
         ""
+    ),
+    "translucent": (
+        "Normal",
     )
 }
 
 Global_Materials = (
         ("advanced", "Advanced", "A more comlpicated material, that is color, normal, emission and PBR capable which renders in the UI. Sourced from the Illuminate Overseer."),
         ("basic+", "Basic+", "A basic material with a color, normal, and PBR map which renders in the UI, Sourced from the super credits prop"),
+        ("translucent", "Translucent", "A translucent with a solid set color and normal map. Sourced from the Terminid Larva Backpack."),
         ("alphaclip", "Alpha Clip", "A material that supports an alpha mask which does not render in the UI. Sourced from a skeleton pile"),
         ("original", "Original", "The original template used for all mods uploaded to Nexus prior to the addon's public release, which is bloated with additional unnecessary textures. Sourced from a terminid"),
         ("basic", "Basic", "A basic material with a color, normal, and PBR map. Sourced from a trash bag prop"),
@@ -156,7 +160,8 @@ Global_MaterialParentIDs = {
     6101987038150196875 : "original",
     15356477064658408677 : "basic",
     15235712479575174153 : "emissive",
-    17265463703140804126 : "advanced"
+    17265463703140804126 : "advanced",
+    9576304397847579354  : "translucent"
 }
 
 #endregion
@@ -1691,6 +1696,7 @@ def CreateAddonMaterial(ID, StingrayMat, mat, Entry):
     elif Entry.MaterialTemplate == "emissive": SetupEmissiveBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separateColor, normalMap)
     elif Entry.MaterialTemplate == "alphaclip": SetupAlphaClipBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separateColor, normalMap, mat)
     elif Entry.MaterialTemplate == "advanced": SetupAdvancedBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separateColor, normalMap, TextureNodes, group, mat)
+    elif Entry.MaterialTemplate == "translucent": SetupTranslucentBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separateColor, normalMap, mat)
     
 def SetupBasicBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separateColor, normalMap):
     bsdf.inputs['Emission Strength'].default_value = 0
@@ -1782,6 +1788,16 @@ def SetupAdvancedBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separate
     
     nodeTree.links.new(bsdf.outputs['BSDF'], outputNode.inputs['Surface'])
 
+def SetupTranslucentBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separateColor, normalMap, mat):
+    bsdf.inputs['Emission Strength'].default_value = 0
+    nodeTree.nodes.remove(separateColor)
+    inputNode.location = (-750, 0)
+    SetupNormalMapTemplate(nodeTree, inputNode, normalMap, bsdf)
+    nodeTree.links.new(bsdf.outputs['BSDF'], outputNode.inputs['Surface'])
+    mat.blend_method = 'BLEND'
+    bsdf.inputs['Alpha'].default_value = 0.02
+    bsdf.inputs['Base Color'].default_value = (1, 1, 1, 1)
+
 def CreateGenericMaterial(ID, StingrayMat, mat):
     idx = 0
     for TextureID in StingrayMat.TexIDs:
@@ -1861,6 +1877,17 @@ def GenerateMaterialTextures(Entry):
                 node.inputs['Emission Color'].default_value = emissionColor
             if node.type == 'MATH' and node.operation == 'MULTIPLY':
                 node.inputs[1].default_value = emissionStrength
+
+    # update color and alpha of translucent
+    if "translucent" in group.node_tree.name:
+        colorVariable = Entry.LoadedData.ShaderVariables[7].values
+        baseColor = (colorVariable[0], colorVariable[1], colorVariable[2], 1)
+        alphaVariable = Entry.LoadedData.ShaderVariables[1].values[0]
+        PrettyPrint(f"Base color: {baseColor} Alpha: {alphaVariable}")
+        for node in group.node_tree.nodes:
+            if node.type == 'BSDF_PRINCIPLED':
+                node.inputs['Base Color'].default_value = baseColor
+                node.inputs['Alpha'].default_value = alphaVariable
 
     PrettyPrint(f"Found {len(filepaths)} Images: {filepaths}")
     return filepaths
