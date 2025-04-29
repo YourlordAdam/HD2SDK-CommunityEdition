@@ -3974,6 +3974,11 @@ class RenamePatchEntryOperator(Operator):
             raise Exception("Entry does not exist in patch (cannot rename non patch entries)")
         if Entry != None and self.NewFileID != "":
             Entry.FileID = int(self.NewFileID)
+
+        # Redraw
+        for area in context.screen.areas:
+            if area.type == "VIEW_3D": area.tag_redraw()
+            
         return{'FINISHED'}
 
     def invoke(self, context, event):
