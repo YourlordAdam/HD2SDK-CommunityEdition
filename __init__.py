@@ -2219,9 +2219,6 @@ class ParticleSystem:
         startOffset = f.tell()
         self.maxNumParticles = f.uint32(self.maxNumParticles)
         self.numComponents = f.uint32(self.numComponents)
-        PrettyPrint(f"offset: {startOffset}")
-        PrettyPrint(f"maxNumParticles: {self.maxNumParticles}")
-        PrettyPrint(f"numComponents: {self.numComponents}")
         self.unk2 = f.uint32(self.unk2)
         self.componentBitFlags = [f.uint32(flag) for flag in range(self.numComponents)]
         f.seek(f.tell() + (64 - 4 * self.numComponents))
@@ -4754,7 +4751,7 @@ class SetMaterialTexture(Operator, ImportHelper):
 
 #region Operators: Particles
 class ImportStingrayParticleOperator(Operator):
-    bl_label = "Import Archive particle"
+    bl_label = "Import Particle"
     bl_idname = "helldiver2.archive_particle_import"
     bl_description = "Loads Particles into Blender Scene"
 
