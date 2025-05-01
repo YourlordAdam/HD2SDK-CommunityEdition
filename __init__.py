@@ -920,7 +920,7 @@ class TocEntry:
         self.VertexGroups = []
         self.Transforms = []
     # -- Serialize TocEntry -- #
-    def Serialize(self, TocFile, Index=0):
+    def Serialize(self, TocFile: MemoryStream, Index=0):
         self.FileID             = TocFile.uint64(self.FileID)
         self.TypeID             = TocFile.uint64(self.TypeID)
         self.TocDataOffset      = TocFile.uint64(self.TocDataOffset)
@@ -937,7 +937,7 @@ class TocEntry:
         return self
 
     # -- Write TocEntry Data -- #
-    def SerializeData(self, TocFile, GpuFile, StreamFile):
+    def SerializeData(self, TocFile: MemoryStream, GpuFile, StreamFile):
         if TocFile.IsReading():
             TocFile.seek(self.TocDataOffset)
             self.TocData = bytearray(self.TocDataSize)
@@ -990,6 +990,7 @@ class TocEntry:
         if self.TypeID == MeshID: callback = LoadStingrayMesh
         if self.TypeID == TexID: callback = LoadStingrayTexture
         if self.TypeID == MaterialID: callback = LoadStingrayMaterial
+        if self.TypeID == ParticleID: callback = LoadStingrayParticle
         if self.TypeID == CompositeMeshID: callback = LoadStingrayCompositeMesh
         if self.TypeID == Hash64("bones"): callback = LoadStingrayBones
         if callback == None: callback = LoadStingrayDump
@@ -1042,7 +1043,7 @@ class TocFileType:
         self.NumFiles = NumFiles
         self.unk2     = 16
         self.unk3     = 64
-    def Serialize(self, TocFile):
+    def Serialize(self, TocFile: MemoryStream):
         self.unk1     = TocFile.uint64(self.unk1)
         self.TypeID   = TocFile.uint64(self.TypeID)
         self.NumFiles = TocFile.uint64(self.NumFiles)
@@ -1472,7 +1473,7 @@ class StingrayMaterial:
 
         self.DEV_ShowEditor = False
         self.DEV_DDSPaths = []
-    def Serialize(self, f):
+    def Serialize(self, f: MemoryStream):
         self.undat1      = f.bytes(self.undat1, 12)
         self.EndOffset   = f.uint32(self.EndOffset)
         self.undat2      = f.uint64(self.undat2)
@@ -1919,7 +1920,7 @@ class StingrayTexture:
         self.Height     = 0
         self.NumMipMaps = 0
         self.ArraySize  = 0
-    def Serialize(self, Toc, Gpu, Stream):
+    def Serialize(self, Toc: MemoryStream, Gpu, Stream):
         # clear header, so we dont have to deal with the .stream file
         if Toc.IsWriting():
             self.Unk1 = 0; self.Unk2  = 0xFFFFFFFF
@@ -2055,7 +2056,7 @@ class StingrayBones:
     def __init__(self):
         self.NumNames = self.NumLODLevels = self.Unk1 = 0
         self.UnkArray1 = []; self.BoneHashes = []; self.LODLevels = []; self.Names = []
-    def Serialize(self, f):
+    def Serialize(self, f: MemoryStream):
         self.NumNames = f.uint32(self.NumNames)
         self.NumLODLevels   = f.uint32(self.NumLODLevels)
         if f.IsReading():
@@ -2106,7 +2107,7 @@ class StingrayCompositeMesh:
         self.StreamInfoUnk = []
         self.StreamInfoUnk2 = 0
         self.GpuData = None
-    def Serialize(self, f, gpu):
+    def Serialize(self, f: MemoryStream, gpu):
         self.unk1               = f.uint64(self.unk1)
         self.NumExternalMeshes  = f.uint32(self.NumExternalMeshes)
         self.StreamInfoOffset   = f.uint32(self.StreamInfoOffset)
@@ -2145,13 +2146,151 @@ def LoadStingrayCompositeMesh(ID, TocData, GpuData, StreamData, Reload, MakeBlen
 
 #endregion
 
+#region StingrayParticles
+
+class StingrayParticles:
+    def __init__(self):
+        self.magic = 0
+        self.minLifetime = 0
+        self.maxLifetime = 0
+        self.unk1 = 0
+        self.unk2 = 0
+        self.numVariables = 0
+        self.numParticleSystems = 0
+        self.ParticleVariableHashes = []
+        self.ParticleVariablePositions = []
+        self.ParticleSystems = []
+
+    def Serialize(self, f: MemoryStream):
+        PrettyPrint("Serializing Particle")
+        self.magic = f.uint32(self.magic)
+        self.minLifetime = f.uint32(self.minLifetime)
+        self.maxLifetime = f.uint32(self.maxLifetime)
+        self.unk1 = f.uint32(self.unk1)
+        self.unk2 = f.uint32(self.unk2)
+        self.numVariables = f.uint32(self.numVariables)
+        self.numParticleSystems = f.uint32(self.numParticleSystems)
+        f.seek(f.tell() + 44)
+        if f.IsReading():
+            self.ParticleVariableHashes = [0 for n in range(self.numVariables)]
+            self.ParticleVariablePositions = [[0, 0, 0] for n in range(self.numVariables)]
+            self.ParticleSystems = [ParticleSystem() for n in range(self.numParticleSystems)]
+        
+        self.ParticleVariableHashes = [f.uint32(hash) for hash in self.ParticleVariableHashes]
+        self.ParticleVariablePositions = [f.vec3_float(position) for position in self.ParticleVariablePositions]
+
+        for system in self.ParticleSystems:
+            system.Serialize(f)
+        
+        #Debug Print
+        PrettyPrint(f"Particle System: {vars(self)}")
+        PrettyPrint(f"Systems:")
+        for system in self.ParticleSystems: 
+            PrettyPrint(vars(system))
+            PrettyPrint(f"Rotation: {vars(system.Rotation)}")
+            PrettyPrint(f"Components: {vars(system.ComponentList)}")
+
+class ParticleSystem:
+    def __init__(self):
+        self.maxNumParticles = 0
+        self.numComponents = 0
+        self.unk2 = 0
+        self.componentBitFlags = []
+        self.unk3 = 0
+        self.unk4 = 0
+        self.unk5 = 0
+        self.unk6 = 0
+        self.type1 = 0
+        self.type2 = 0
+        self.Rotation = ParticleRotation()
+        self.unknown = []
+        self.unk7 = 0
+        self.componentListOffset = 0
+        self.unk8 = 0
+        self.componentListSize = 0
+        self.unk9 = 0
+        self.unk10 = 0
+        self.offset3 = 0
+        self.particleSystemSize = 0
+        self.ComponentList = ComponentList()
+
+    def Serialize(self, f: MemoryStream):
+        PrettyPrint("Serializing Particle System")
+        startOffset = f.tell()
+        self.maxNumParticles = f.uint32(self.maxNumParticles)
+        self.numComponents = f.uint32(self.numComponents)
+        PrettyPrint(f"offset: {startOffset}")
+        PrettyPrint(f"maxNumParticles: {self.maxNumParticles}")
+        PrettyPrint(f"numComponents: {self.numComponents}")
+        self.unk2 = f.uint32(self.unk2)
+        self.componentBitFlags = [f.uint32(flag) for flag in range(self.numComponents)]
+        f.seek(f.tell() + (64 - 4 * self.numComponents))
+        self.unk3 = f.uint32(self.unk3)
+        self.unk4 = f.uint32(self.unk4)
+        f.seek(f.tell() + 8)
+        self.unk5 = f.uint32(self.unk5)
+        f.seek(f.tell() + 4)
+        self.unk6 = f.uint32(self.unk6)
+        f.seek(f.tell() + 4)
+        self.type1 = f.uint32(self.type1)
+        self.type2 = f.uint32(self.type2)
+        f.seek(f.tell() + 4)
+        self.Rotation.Serialize(f)
+        self.unknown = [f.float32(n) for n in range(11)]
+        self.unk7 = f.uint32(self.unk7)
+        self.componentListOffset = f.uint32(self.componentListOffset)
+        self.unk8 = f.uint32(self.unk8)
+        self.componentListSize = f.uint32(self.componentListSize)
+        self.unk9 = f.uint32(self.unk9)
+        self.unk10 = f.uint32(self.unk10)
+        self.offset3 = f.uint32(self.offset3)
+        self.particleSystemSize = f.uint32(self.particleSystemSize)
+        f.seek(startOffset + self.componentListOffset)
+        if (self.unk3 == 0xFFFFFFFF): #non-rendering particle system
+            f.seek(startOffset + self.particleSystemSize)
+            return
+        self.ComponentList.Serialize(self, f)
+        f.seek(startOffset + self.particleSystemSize)
+
+class ParticleRotation:
+    def __init__(self):
+        self.xRow = [0 for n in range(3)]
+        self.yRow = [0 for n in range(3)]
+        self.zRow = [0 for n in range(3)]
+        self.unk = [0 for n in range(16)]
+
+    def Serialize(self, f: MemoryStream):
+        self.xRow = [f.float32(n) for n in range(3)]
+        f.seek(f.tell() + 4)
+        self.yRow = [f.float32(n) for n in range(3)]
+        f.seek(f.tell() + 4)
+        self.zRow = [f.float32(n) for n in range(3)]
+        f.seek(f.tell() + 4)
+        self.unk = [f.uint8(n) for n in range(16)]
+
+class ComponentList:
+    def __init__(self):
+        self.componentList = []
+    
+    def Serialize(self, particleSystem: ParticleSystem, f: MemoryStream):
+        size = particleSystem.componentListSize - particleSystem.componentListOffset
+        self.componentList = [f.uint8(n) for n in range(size)]
+
+def LoadStingrayParticle(ID, TocData, GpuData, StreamData, Reload, MakeBlendObject):
+    f = MemoryStream(TocData)
+    Particle = StingrayParticles()
+    Particle.Serialize(f)
+    return Particle
+
+#endregion
+
 #region StingrayRawDump
 
 class StingrayRawDump:
     def __init__(self):
         return None
 
-    def Serialize(self, f):
+    def Serialize(self, f: MemoryStream):
         return self
 
 def LoadStingrayDump(ID, TocData, GpuData, StreamData, Reload, MakeBlendObject):
@@ -2175,7 +2314,7 @@ def SaveStingrayDump(self, ID, TocData, GpuData, StreamData, LoadedData):
 class StingrayMatrix4x4: # Matrix4x4: https://help.autodesk.com/cloudhelp/ENU/Stingray-SDK-Help/engine_c/plugin__api__types_8h.html#line_89
     def __init__(self):
         self.v = [float(0)]*16
-    def Serialize(self, f):
+    def Serialize(self, f: MemoryStream):
         self.v = [f.float32(value) for value in self.v]
         return self
 
@@ -2184,7 +2323,7 @@ class StingrayMatrix3x3: # Matrix3x3: https://help.autodesk.com/cloudhelp/ENU/St
         self.x = [0,0,0]
         self.y = [0,0,0]
         self.z = [0,0,0]
-    def Serialize(self, f):
+    def Serialize(self, f: MemoryStream):
         self.x = f.vec3_float(self.x)
         self.y = f.vec3_float(self.x)
         self.z = f.vec3_float(self.x)
@@ -2198,18 +2337,18 @@ class StingrayLocalTransform: # Stingray Local Transform: https://help.autodesk.
         self.dummy = 0 # Force 16 byte alignment
         self.Incriment = self.ParentBone = 0
 
-    def Serialize(self, f):
+    def Serialize(self, f: MemoryStream):
         self.rot    = self.rot.Serialize(f)
         self.pos    = f.vec3_float(self.pos)
         self.scale  = f.vec3_float(self.scale)
         self.dummy  = f.float32(self.dummy)
         return self
-    def SerializeV2(self, f): # Quick and dirty solution, unknown exactly what this is for
+    def SerializeV2(self, f: MemoryStream): # Quick and dirty solution, unknown exactly what this is for
         f.seek(f.tell()+48)
         self.pos    = f.vec3_float(self.pos)
         self.dummy  = f.float32(self.dummy)
         return self
-    def SerializeTransformEntry(self, f):
+    def SerializeTransformEntry(self, f: MemoryStream):
         self.Incriment = f.uint16(self.Incriment)
         self.ParentBone = f.uint16(self.ParentBone)
         return self
@@ -2221,7 +2360,7 @@ class TransformInfo: # READ ONLY
         self.PositionTransforms = []
         self.TransfromEntries = []
         self.NameHashes = []
-    def Serialize(self, f):
+    def Serialize(self, f: MemoryStream):
         if f.IsWriting():
             raise Exception("This struct is read only (write not implemented)")
         self.NumTransforms = f.uint32(self.NumTransforms)
@@ -2240,7 +2379,7 @@ class CustomizationInfo: # READ ONLY
         self.Slot      = ""
         self.Weight    = ""
         self.PieceType = ""
-    def Serialize(self, f):
+    def Serialize(self, f: MemoryStream):
         if f.IsWriting():
             raise Exception("This struct is read only (write not implemented)")
         try: # TODO: fix this, this is basically completely wrong, this is generic user data, but for now this works
@@ -2295,7 +2434,7 @@ class StreamComponentInfo:
         self.Format = self.FormatFromName(format)
         self.Index   = 0
         self.Unknown = 0
-    def Serialize(self, f):
+    def Serialize(self, f: MemoryStream):
         self.Type      = f.uint32(self.Type)
         self.Format    = f.uint32(self.Format)
         self.Index     = f.uint32(self.Index)
@@ -2356,7 +2495,7 @@ class StreamComponentInfo:
         elif self.Format == 29: return 4
         elif self.Format == 31: return 8
         raise Exception("Cannot get size of unknown vertex format: "+str(self.Format))
-    def SerializeComponent(self, f, value):
+    def SerializeComponent(self, f: MemoryStream, value):
         try:
             serialize_func = FUNCTION_LUTS.SERIALIZE_COMPONENT_LUT[self.Format]
             return serialize_func(f, value)
@@ -2369,7 +2508,7 @@ class BoneInfo:
         self.NumBones = self.unk1 = self.RealIndicesOffset = self.FakeIndicesOffset = self.NumFakeIndices = self.FakeIndicesUnk = 0
         self.Bones = self.RealIndices = self.FakeIndices = []
         self.DEV_RawData = bytearray()
-    def Serialize(self, f, end=None):
+    def Serialize(self, f: MemoryStream, end=None):
         if f.IsReading():
             self.DEV_RawData = bytearray(end-f.tell())
             start = f.tell()
@@ -2378,7 +2517,7 @@ class BoneInfo:
         self.DEV_RawData = f.bytes(self.DEV_RawData)
         return self
 
-    def Serialize_REAL(self, f): # still need to figure out whats up with the unknown bit
+    def Serialize_REAL(self, f: MemoryStream): # still need to figure out whats up with the unknown bit
         RelPosition = f.tell()
 
         self.NumBones       = f.uint32(self.NumBones)
@@ -2420,7 +2559,7 @@ class StreamInfo:
         self.UnkEndingBytes = bytearray(16)
         self.DEV_StreamInfoOffset    = self.DEV_ComponentInfoOffset = 0 # helper vars, not in file
 
-    def Serialize(self, f):
+    def Serialize(self, f: MemoryStream):
         self.DEV_StreamInfoOffset = f.tell()
         self.ComponentInfoID = f.uint64(self.ComponentInfoID)
         self.DEV_ComponentInfoOffset = f.tell()
@@ -2463,7 +2602,7 @@ class MeshSectionInfo:
         self.unk1 = self.VertexOffset=self.NumVertices=self.IndexOffset=self.NumIndices=self.unk2 = 0
         self.DEV_MeshInfoOffset=0 # helper var, not in file
         self.ID = ID
-    def Serialize(self, f):
+    def Serialize(self, f: MemoryStream):
         self.DEV_MeshInfoOffset = f.tell()
         self.unk1           = f.uint32(self.unk1)
         self.VertexOffset   = f.uint32(self.VertexOffset)
@@ -2478,7 +2617,7 @@ class MeshInfo:
         self.unk1 = self.unk3 = self.unk4 = self.TransformIndex = self.LodIndex = self.StreamIndex = self.NumSections = self.unk7 = self.unk8 = self.unk9 = self.NumSections_unk = self.MeshID = 0
         self.unk2 = bytearray(32); self.unk6 = bytearray(40)
         self.SectionIDs = self.Sections = []
-    def Serialize(self, f):
+    def Serialize(self, f: MemoryStream):
         self.unk1 = f.uint64(self.unk1)
         self.unk2 = f.bytes(self.unk2, 32)
         self.MeshID= f.uint32(self.MeshID)
@@ -2634,16 +2773,16 @@ class SerializeFunctions:
             mesh.VertexWeights[vidx] = component.SerializeComponent(gpu, mesh.VertexWeights[vidx])
             
             
-    def SerializeFloatComponent(f, value):
+    def SerializeFloatComponent(f: MemoryStream, value):
         return f.float32(value)
         
-    def SerializeVec2FloatComponent(f, value):
+    def SerializeVec2FloatComponent(f: MemoryStream, value):
         return f.vec2_float(value)
         
-    def SerializeVec3FloatComponent(f, value):
+    def SerializeVec3FloatComponent(f: MemoryStream, value):
         return f.vec3_float(value)
         
-    def SerializeRGBA8888Component(f, value):
+    def SerializeRGBA8888Component(f: MemoryStream, value):
         if f.IsReading():
             r = min(255, int(value[0]*255))
             g = min(255, int(value[1]*255))
@@ -2658,13 +2797,13 @@ class SerializeFunctions:
             value[3] = min(1, float(value[3]/255))
         return value
         
-    def SerializeVec4Uint32Component(f, value):
+    def SerializeVec4Uint32Component(f: MemoryStream, value):
         return f.vec4_uint32(value)
         
-    def SerializeVec4Uint8Component(f, value):
+    def SerializeVec4Uint8Component(f: MemoryStream, value):
         return f.vec4_uint8(value)
         
-    def SerializeVec41010102Component(f, value):
+    def SerializeVec41010102Component(f: MemoryStream, value):
         if f.IsReading():
             value = TenBitUnsigned(f.uint32(0))
             value[3] = 0 # seems to be needed for weights
@@ -2672,22 +2811,22 @@ class SerializeFunctions:
             f.uint32(MakeTenBitUnsigned(value))
         return value
         
-    def SerializeUnkNormalComponent(f, value):
+    def SerializeUnkNormalComponent(f: MemoryStream, value):
         if isinstance(value, int):
             return f.uint32(value)
         else:
             return f.uint32(0)
             
-    def SerializeVec2HalfComponent(f, value):
+    def SerializeVec2HalfComponent(f: MemoryStream, value):
         return f.vec2_half(value)
         
-    def SerializeVec4HalfComponent(f, value):
+    def SerializeVec4HalfComponent(f: MemoryStream, value):
         if isinstance(value, float):
             return f.vec4_half([value,value,value,value])
         else:
             return f.vec4_half(value)
             
-    def SerializeUnknownComponent(f, value):
+    def SerializeUnknownComponent(f: MemoryStream, value):
         raise Exception("Cannot serialize unknown vertex format!")
               
             
@@ -2732,7 +2871,7 @@ class StingrayMeshFile:
         self.TransformInfo     = TransformInfo()
         self.BoneNames = None
     # -- Serialize Mesh -- #
-    def Serialize(self, f, gpu, redo_offsets = False):
+    def Serialize(self, f: MemoryStream, gpu, redo_offsets = False):
         PrettyPrint("Serialize")
         if f.IsWriting() and not redo_offsets:
             # duplicate bone info sections if needed
@@ -2959,7 +3098,7 @@ class StingrayMeshFile:
             self.Serialize(f, gpu, True)
         return self
 
-    def SerializeGpuData(self, gpu):
+    def SerializeGpuData(self, gpu: MemoryStream):
         PrettyPrint("SerializeGpuData")
         # Init Raw Meshes If Reading
         if gpu.IsReading():
@@ -2980,7 +3119,7 @@ class StingrayMeshFile:
                 self.SerializeVertexBuffer(gpu, Stream_Info, stream_idx, OrderedMeshes)
                 self.SerializeIndexBuffer(gpu, Stream_Info, stream_idx, OrderedMeshes)
 
-    def SerializeIndexBuffer(self, gpu, Stream_Info, stream_idx, OrderedMeshes):
+    def SerializeIndexBuffer(self, gpu: MemoryStream, Stream_Info, stream_idx, OrderedMeshes):
         # get indices
         IndexOffset  = 0
         CompiledIncorrectly = False
@@ -3059,7 +3198,7 @@ class StingrayMeshFile:
                         Section.NumVertices = RealNumVerts
                     self.ReInitRawMeshVerts(mesh)
 
-    def SerializeVertexBuffer(self, gpu, Stream_Info, stream_idx, OrderedMeshes):
+    def SerializeVertexBuffer(self, gpu: MemoryStream, Stream_Info, stream_idx, OrderedMeshes):
         # Vertex Buffer
         VertexOffset = 0
         if gpu.IsWriting(): Stream_Info.VertexBufferOffset = gpu.tell()
@@ -4613,6 +4752,36 @@ class SetMaterialTexture(Operator, ImportHelper):
 
 #endregion
 
+#region Operators: Particles
+class ImportStingrayParticleOperator(Operator):
+    bl_label = "Import Archive particle"
+    bl_idname = "helldiver2.archive_particle_import"
+    bl_description = "Loads Particles into Blender Scene"
+
+    object_id: StringProperty()
+    def execute(self, context):
+        EntriesIDs = IDsFromString(self.object_id)
+        Errors = []
+        for EntryID in EntriesIDs:
+            if len(EntriesIDs) == 1:
+                Global_TocManager.Load(EntryID, ParticleID)
+            else:
+                try:
+                    Global_TocManager.Load(EntryID, ParticleID)
+                except Exception as error:
+                    Errors.append([EntryID, error])
+
+        if len(Errors) > 0:
+            PrettyPrint("\nThese errors occurred while attempting to load particles...", "error")
+            idx = 0
+            for error in Errors:
+                PrettyPrint(f"  Error {idx}: for particle {error[0]}", "error")
+                PrettyPrint(f"    {error[1]}\n", "error")
+                idx += 1
+            raise Exception("One or more particles failed to load")
+        return{'FINISHED'}
+#endregion
+
 #region Operators: Clipboard Functionality
 
 class CopyArchiveEntryOperator(Operator):
@@ -5222,6 +5391,8 @@ class HellDivers2ToolsPanel(Panel):
             row.operator("helldiver2.material_import", icon='IMPORT', text="").object_id = str(Entry.FileID)
             row.operator("helldiver2.material_showeditor", icon='MOD_LINEART', text="").object_id = str(Entry.FileID)
             self.draw_material_editor(Entry, box, row)
+        elif Entry.TypeID == ParticleID:
+            row.operator("helldiver2.archive_particle_import", icon='IMPORT', text = "").object_id = str(Entry.FileID)
         if Global_TocManager.IsInPatch(Entry):
             props = row.operator("helldiver2.archive_removefrompatch", icon='FAKE_USER_ON', text="")
             props.object_id     = str(Entry.FileID)
@@ -5425,13 +5596,14 @@ class HellDivers2ToolsPanel(Panel):
                     type_icon = 'FILE_IMAGE'
                 elif Type.TypeID == MaterialID:
                     type_icon = 'MATERIAL' 
+                elif Type.TypeID == ParticleID: 
+                    type_icon = 'PARTICLES'
                 elif showExtras:
                     if Type.TypeID == BoneID: type_icon = 'BONE_DATA'
                     elif Type.TypeID == WwiseBankID:  type_icon = 'OUTLINER_DATA_SPEAKER'
                     elif Type.TypeID == WwiseDepID: type_icon = 'OUTLINER_DATA_SPEAKER'
                     elif Type.TypeID == WwiseStreamID:  type_icon = 'OUTLINER_DATA_SPEAKER'
                     elif Type.TypeID == WwiseMetaDataID: type_icon = 'OUTLINER_DATA_SPEAKER'
-                    elif Type.TypeID == ParticleID: type_icon = 'PARTICLES'
                     elif Type.TypeID == AnimationID: type_icon = 'ARMATURE_DATA'
                 else:
                     continue
@@ -5459,7 +5631,9 @@ class HellDivers2ToolsPanel(Panel):
                 sub.operator("helldiver2.collapse_section", text=f"{typeName}: {str(Type.TypeID)}", icon=fold_icon, emboss=False).type = str(Type.TypeID)
 
                 # Skip drawling entries if section hidden
-                if not show: continue
+                if not show: 
+                    sub.label(icon=type_icon)
+                    continue
                 
                 #sub.operator("helldiver2.import_type", icon='IMPORT', text="").object_typeid = str(Type.TypeID)
                 sub.operator("helldiver2.select_type", icon='RESTRICT_SELECT_OFF', text="").object_typeid = str(Type.TypeID)
@@ -5533,6 +5707,7 @@ class WM_MT_button_context(Menu):
         AreAllMeshes    = True
         AreAllTextures  = True
         AreAllMaterials = True
+        AreAllParticles = True
         SingleEntry = True
         NumSelected = len(Global_TocManager.SelectedEntries)
         if len(Global_TocManager.SelectedEntries) > 1:
@@ -5541,22 +5716,31 @@ class WM_MT_button_context(Menu):
             if SelectedEntry.TypeID == MeshID:
                 AreAllTextures = False
                 AreAllMaterials = False
+                AreAllParticles = False
             elif SelectedEntry.TypeID == TexID:
                 AreAllMeshes = False
                 AreAllMaterials = False
+                AreAllParticles = False
             elif SelectedEntry.TypeID == MaterialID:
                 AreAllTextures = False
                 AreAllMeshes = False
+                AreAllParticles = False
+            elif SelectedEntry.TypeID == ParticleID:
+                AreAllTextures = False
+                AreAllMeshes = False
+                AreAllMaterials = False
             else:
                 AreAllMeshes = False
                 AreAllTextures = False
                 AreAllMaterials = False
+                AreAllParticles = False
         
         RemoveFromPatchName = "Remove From Patch" if SingleEntry else f"Remove {NumSelected} From Patch"
         AddToPatchName = "Add To Patch" if SingleEntry else f"Add {NumSelected} To Patch"
         ImportMeshName = "Import Mesh" if SingleEntry else f"Import {NumSelected} Meshes"
         ImportTextureName = "Import Texture" if SingleEntry else f"Import {NumSelected} Textures"
         ImportMaterialName = "Import Material" if SingleEntry else f"Import {NumSelected} Materials"
+        ImportParticleName = "Import Particle" if SingleEntry else f"Import {NumSelected} Particles"
         DumpObjectName = "Export Object Dump" if SingleEntry else f"Export {NumSelected} Object Dumps"
         ImportDumpObjectName = "Import Object Dump" if SingleEntry else f"Import {NumSelected} Object Dumps"
         SaveTextureName = "Save Blender Texture" if SingleEntry else f"Save Blender {NumSelected} Textures"
@@ -5595,10 +5779,12 @@ class WM_MT_button_context(Menu):
         row.separator()
         if AreAllMeshes:
             row.operator("helldiver2.archive_mesh_import", icon='IMPORT', text=ImportMeshName).object_id = FileIDStr
-        if AreAllTextures:
+        elif AreAllTextures:
             row.operator("helldiver2.texture_import", icon='IMPORT', text=ImportTextureName).object_id = FileIDStr
         elif AreAllMaterials:
             row.operator("helldiver2.material_import", icon='IMPORT', text=ImportMaterialName).object_id = FileIDStr
+        elif AreAllParticles:
+            row.operator("helldiver2.archive_particle_import", icon='IMPORT', text=ImportParticleName).object_id = FileIDStr
         # Draw export buttons
         row.separator()
         if SingleEntry:
@@ -5745,6 +5931,7 @@ classes = (
     MaterialShaderVariableEntryOperator,
     MaterialShaderVariableColorEntryOperator,
     MeshFixOperator,
+    ImportStingrayParticleOperator,
 )
 
 Global_TocManager = TocManager()
