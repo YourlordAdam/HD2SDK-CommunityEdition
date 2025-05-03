@@ -89,6 +89,9 @@ WwiseStreamID  = 5785811756662211598
 WwiseMetaDataID  = 15351235653606224144
 ParticleID = 12112766700566326628
 AnimationID = 10600967118105529382
+StateMachineID = 11855396184103720540
+StringID = 979299457696010195
+PhysicsID = 6877563742545042104
 
 TextureTypeLookup = {
     "original": (
@@ -1030,6 +1033,7 @@ class TocEntry:
         if self.TypeID == MeshID: callback = SaveStingrayMesh
         if self.TypeID == TexID: callback = SaveStingrayTexture
         if self.TypeID == MaterialID: callback = SaveStingrayMaterial
+        if self.TypeID == ParticleID: callback = SaveStingrayParticle
         if callback == None: callback = SaveStingrayDump
 
         if self.IsLoaded:
@@ -2164,8 +2168,8 @@ class StingrayParticles:
     def Serialize(self, f: MemoryStream):
         PrettyPrint("Serializing Particle")
         self.magic = f.uint32(self.magic)
-        self.minLifetime = f.uint32(self.minLifetime)
-        self.maxLifetime = f.uint32(self.maxLifetime)
+        self.minLifetime = f.float32(self.minLifetime)
+        self.maxLifetime = f.float32(self.maxLifetime)
         self.unk1 = f.uint32(self.unk1)
         self.unk2 = f.uint32(self.unk2)
         self.numVariables = f.uint32(self.numVariables)
@@ -2220,7 +2224,9 @@ class ParticleSystem:
         self.maxNumParticles = f.uint32(self.maxNumParticles)
         self.numComponents = f.uint32(self.numComponents)
         self.unk2 = f.uint32(self.unk2)
-        self.componentBitFlags = [f.uint32(flag) for flag in range(self.numComponents)]
+        if f.IsReading():
+            self.componentBitFlags = [0 for n in range(self.numComponents)]
+        self.componentBitFlags = [f.uint32(flag) for flag in self.componentBitFlags]
         f.seek(f.tell() + (64 - 4 * self.numComponents))
         self.unk3 = f.uint32(self.unk3)
         self.unk4 = f.uint32(self.unk4)
@@ -2233,7 +2239,9 @@ class ParticleSystem:
         self.type2 = f.uint32(self.type2)
         f.seek(f.tell() + 4)
         self.Rotation.Serialize(f)
-        self.unknown = [f.float32(n) for n in range(11)]
+        if f.IsReading():
+            self.unknown = [0 for n in range(11)]
+        self.unknown = [f.float32(n) for n in self.unknown]
         self.unk7 = f.uint32(self.unk7)
         self.componentListOffset = f.uint32(self.componentListOffset)
         self.unk8 = f.uint32(self.unk8)
@@ -2257,13 +2265,13 @@ class ParticleRotation:
         self.unk = [0 for n in range(16)]
 
     def Serialize(self, f: MemoryStream):
-        self.xRow = [f.float32(n) for n in range(3)]
+        self.xRow = [f.float32(x) for x in self.xRow]
         f.seek(f.tell() + 4)
-        self.yRow = [f.float32(n) for n in range(3)]
+        self.yRow = [f.float32(y) for y in self.yRow]
         f.seek(f.tell() + 4)
-        self.zRow = [f.float32(n) for n in range(3)]
+        self.zRow = [f.float32(z) for z in self.zRow]
         f.seek(f.tell() + 4)
-        self.unk = [f.uint8(n) for n in range(16)]
+        self.unk = [f.uint8(n) for n in self.unk]
 
 class ComponentList:
     def __init__(self):
@@ -2271,13 +2279,20 @@ class ComponentList:
     
     def Serialize(self, particleSystem: ParticleSystem, f: MemoryStream):
         size = particleSystem.componentListSize - particleSystem.componentListOffset
-        self.componentList = [f.uint8(n) for n in range(size)]
+        if f.IsReading():
+            self.componentList = [0 for n in range(size)]
+        self.componentList = [f.uint8(component) for component in self.componentList]
 
 def LoadStingrayParticle(ID, TocData, GpuData, StreamData, Reload, MakeBlendObject):
     f = MemoryStream(TocData)
     Particle = StingrayParticles()
     Particle.Serialize(f)
     return Particle
+
+def SaveStingrayParticle(self, ID, TocData, GpuData, StreamData, LoadedData):
+    f = MemoryStream(TocData, IOMode="write") # Load in original TocData before overwriting it
+    LoadedData.Serialize(f)
+    return [f.Data, b"", b""]
 
 #endregion
 
@@ -4750,6 +4765,35 @@ class SetMaterialTexture(Operator, ImportHelper):
 #endregion
 
 #region Operators: Particles
+class SaveStingrayParticleOperator(Operator):
+    bl_label  = "Save Particle"
+    bl_idname = "helldiver2.particle_save"
+    bl_description = "Saves Particle"
+    bl_options = {'REGISTER', 'UNDO'} 
+
+    object_id: StringProperty()
+    def execute(self, context):
+        mode = context.mode
+        if mode != 'OBJECT':
+            self.report({'ERROR'}, f"You are Not in OBJECT Mode. Current Mode: {mode}")
+            return {'CANCELLED'}
+        if MeshNotValidToSave(self):
+            return {'CANCELLED'}
+        wasSaved = Global_TocManager.Save(int(self.object_id), ParticleID)
+
+        # we can handle below later when we put a particle object into the blender scene
+
+        # if not wasSaved:
+        #         for object in bpy.data.objects:
+        #             try:
+        #                 ID = object["Z_ObjectID"]
+        #                 self.report({'ERROR'}, f"Archive for entry being saved is not loaded. Object: {object.name} ID: {ID}")
+        #                 return{'CANCELLED'}
+        #             except:
+        #                 self.report({'ERROR'}, f"Failed to find object with custom property ID. Object: {object.name}")
+        #                 return{'CANCELLED'}
+        # self.report({'INFO'}, f"Saved Mesh Object ID: {self.object_id}")
+        return{'FINISHED'}
 class ImportStingrayParticleOperator(Operator):
     bl_label = "Import Particle"
     bl_idname = "helldiver2.archive_particle_import"
@@ -5389,6 +5433,7 @@ class HellDivers2ToolsPanel(Panel):
             row.operator("helldiver2.material_showeditor", icon='MOD_LINEART', text="").object_id = str(Entry.FileID)
             self.draw_material_editor(Entry, box, row)
         elif Entry.TypeID == ParticleID:
+            row.operator("helldiver2.particle_save", icon='FILE_BLEND', text = "").object_id = str(Entry.FileID)
             row.operator("helldiver2.archive_particle_import", icon='IMPORT', text = "").object_id = str(Entry.FileID)
         if Global_TocManager.IsInPatch(Entry):
             props = row.operator("helldiver2.archive_removefrompatch", icon='FAKE_USER_ON', text="")
@@ -5602,6 +5647,9 @@ class HellDivers2ToolsPanel(Panel):
                     elif Type.TypeID == WwiseStreamID:  type_icon = 'OUTLINER_DATA_SPEAKER'
                     elif Type.TypeID == WwiseMetaDataID: type_icon = 'OUTLINER_DATA_SPEAKER'
                     elif Type.TypeID == AnimationID: type_icon = 'ARMATURE_DATA'
+                    elif Type.TypeID == StateMachineID: type_icon = 'DRIVER'
+                    elif Type.TypeID == StringID: type_icon = 'WORDWRAP_ON'
+                    elif Type.TypeID == PhysicsID: type_icon = 'PHYSICS'
                 else:
                     continue
                 
@@ -5742,6 +5790,7 @@ class WM_MT_button_context(Menu):
         ImportDumpObjectName = "Import Object Dump" if SingleEntry else f"Import {NumSelected} Object Dumps"
         SaveTextureName = "Save Blender Texture" if SingleEntry else f"Save Blender {NumSelected} Textures"
         SaveMaterialName = "Save Material" if SingleEntry else f"Save {NumSelected} Materials"
+        SaveParticleName = "Save Particle" if SingleEntry else f"Save {NumSelected} Particles"
         UndoName = "Undo Modifications" if SingleEntry else f"Undo {NumSelected} Modifications"
         CopyName = "Copy Entry" if SingleEntry else f"Copy {NumSelected} Entries"
         
@@ -5819,6 +5868,8 @@ class WM_MT_button_context(Menu):
                 row.operator("helldiver2.material_set_template", icon='MATSHADERBALL').entry_id = str(Entry.FileID)
                 if Entry.LoadedData != None:
                     row.operator("helldiver2.copytest", icon='COPY_ID', text="Copy Parent Material Entry ID").text = str(Entry.LoadedData.ParentMaterialID)
+        elif AreAllParticles:
+            row.operator("helldiver2.particle_save", icon='FILE_BLEND', text=SaveParticleName).object_id = FileIDStr
         # Draw copy ID buttons
         if SingleEntry:
             row.separator()
@@ -5929,6 +5980,7 @@ classes = (
     MaterialShaderVariableColorEntryOperator,
     MeshFixOperator,
     ImportStingrayParticleOperator,
+    SaveStingrayParticleOperator,
 )
 
 Global_TocManager = TocManager()
