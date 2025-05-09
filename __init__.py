@@ -17,7 +17,6 @@ from pathlib import Path
 import configparser
 import requests
 import json
-import sys
 
 #import pyautogui 
 
@@ -79,6 +78,8 @@ Global_BoneNames = {}
 
 #region Common Hashes & Lookups
 
+BaseArchiveHexID = "9ba626afa44a3aa3"
+
 CompositeMeshID = 14191111524867688662
 MeshID = 16187218042980615487
 TexID  = 14790446551990181426
@@ -90,6 +91,9 @@ WwiseStreamID  = 5785811756662211598
 WwiseMetaDataID  = 15351235653606224144
 ParticleID = 12112766700566326628
 AnimationID = 10600967118105529382
+StateMachineID = 11855396184103720540
+StringID = 979299457696010195
+PhysicsID = 6877563742545042104
 
 TextureTypeLookup = {
     "original": (
@@ -139,12 +143,16 @@ TextureTypeLookup = {
         "",
         "",
         ""
+    ),
+    "translucent": (
+        "Normal",
     )
 }
 
 Global_Materials = (
         ("advanced", "Advanced", "A more comlpicated material, that is color, normal, emission and PBR capable which renders in the UI. Sourced from the Illuminate Overseer."),
         ("basic+", "Basic+", "A basic material with a color, normal, and PBR map which renders in the UI, Sourced from the super credits prop"),
+        ("translucent", "Translucent", "A translucent with a solid set color and normal map. Sourced from the Terminid Larva Backpack."),
         ("alphaclip", "Alpha Clip", "A material that supports an alpha mask which does not render in the UI. Sourced from a skeleton pile"),
         ("original", "Original", "The original template used for all mods uploaded to Nexus prior to the addon's public release, which is bloated with additional unnecessary textures. Sourced from a terminid"),
         ("basic", "Basic", "A basic material with a color, normal, and PBR map. Sourced from a trash bag prop"),
@@ -157,7 +165,8 @@ Global_MaterialParentIDs = {
     6101987038150196875 : "original",
     15356477064658408677 : "basic",
     15235712479575174153 : "emissive",
-    17265463703140804126 : "advanced"
+    17265463703140804126 : "advanced",
+    9576304397847579354  : "translucent"
 }
 
 #endregion
@@ -331,7 +340,8 @@ def duplicate(obj, data=True, actions=True, collection=None):
     if data:
         obj_copy.data = obj_copy.data.copy()
     if actions and obj_copy.animation_data:
-        obj_copy.animation_data.action = obj_copy.animation_data.action.copy()
+        if obj_copy.animation_data.action:
+            obj_copy.animation_data.action = obj_copy.animation_data.action.copy()
     bpy.context.collection.objects.link(obj_copy)
     return obj_copy
 
@@ -520,8 +530,8 @@ def NameFromMesh(mesh, id, customization_info, bone_names, use_sufix=True):
     name_sufix = "_lod"+str(mesh.LodIndex)
     if mesh.LodIndex == -1:
         name_sufix = "_mesh"+str(mesh.MeshInfoIndex)
-    if mesh.IsPhysicsBody():
-        name_sufix = "_phys"+str(mesh.MeshInfoIndex)
+    if mesh.IsCullingBody():
+        name_sufix = "_culling"+str(mesh.MeshInfoIndex)
     if use_sufix: name = name + name_sufix
 
     if use_sufix and bone_names != None:
@@ -546,7 +556,7 @@ def CreateModel(model, id, customization_info, bone_names, transform_info, bone_
         if not bpy.context.scene.Hd2ToolPanelSettings.ImportLods and mesh.IsLod():
             continue
         # check physics
-        if not bpy.context.scene.Hd2ToolPanelSettings.ImportPhysics and mesh.IsPhysicsBody():
+        if not bpy.context.scene.Hd2ToolPanelSettings.ImportCulling and mesh.IsCullingBody():
             continue
         # check static
         if not bpy.context.scene.Hd2ToolPanelSettings.ImportStatic and mesh.IsStaticMesh():
@@ -587,7 +597,7 @@ def CreateModel(model, id, customization_info, bone_names, transform_info, bone_
             new_object["Z_CustomizationSlot"]     = customization_info.Slot
             new_object["Z_CustomizationWeight"]   = customization_info.Weight
             new_object["Z_CustomizationPieceType"]= customization_info.PieceType
-        if mesh.IsPhysicsBody():
+        if mesh.IsCullingBody():
             new_object.display_type = 'WIRE'
 
         # add object to scene collection
@@ -838,7 +848,7 @@ def LoadArchiveHashes():
         for innerKey in data[title]:
             Global_ArchiveHashes.append([innerKey, title + ": " + data[title][innerKey]])
 
-    Global_ArchiveHashes.append(["9ba626afa44a3aa3", "SDK: Base Patch Archive"])
+    Global_ArchiveHashes.append([BaseArchiveHexID, "SDK: Base Patch Archive"])
 
 def LoadShaderVariables():
     global Global_ShaderVariables
@@ -897,7 +907,7 @@ def UpdateConfig():
 #region Classes and Functions: Stingray Archives
 
 class TocEntry:
-    
+
     def __init__(self):
         self.FileID = self.TypeID = self.TocDataOffset = self.Unknown1 = self.GpuResourceOffset = self.Unknown2 = self.TocDataSize = self.GpuResourceSize = self.EntryIndex = self.StreamSize = self.StreamOffset = 0
         self.Unknown3 = 16
@@ -918,7 +928,7 @@ class TocEntry:
         self.VertexGroups = []
         self.Transforms = []
     # -- Serialize TocEntry -- #
-    def Serialize(self, TocFile, Index=0):
+    def Serialize(self, TocFile: MemoryStream, Index=0):
         self.FileID             = TocFile.uint64(self.FileID)
         self.TypeID             = TocFile.uint64(self.TypeID)
         self.TocDataOffset      = TocFile.uint64(self.TocDataOffset)
@@ -935,7 +945,7 @@ class TocEntry:
         return self
 
     # -- Write TocEntry Data -- #
-    def SerializeData(self, TocFile, GpuFile, StreamFile):
+    def SerializeData(self, TocFile: MemoryStream, GpuFile, StreamFile):
         if TocFile.IsReading():
             TocFile.seek(self.TocDataOffset)
             self.TocData = bytearray(self.TocDataSize)
@@ -988,10 +998,11 @@ class TocEntry:
         if self.TypeID == MeshID: callback = LoadStingrayMesh
         if self.TypeID == TexID: callback = LoadStingrayTexture
         if self.TypeID == MaterialID: callback = LoadStingrayMaterial
+        if self.TypeID == ParticleID: callback = LoadStingrayParticle
         if self.TypeID == CompositeMeshID: callback = LoadStingrayCompositeMesh
         if self.TypeID == Hash64("bones"): callback = LoadStingrayBones
         if callback == None: callback = LoadStingrayDump
-        
+
         if callback != None:
             self.LoadedData = callback(self.FileID, self.TocData, self.GpuData, self.StreamData, Reload, MakeBlendObject)
             if self.LoadedData == None: raise Exception("Archive Entry Load Failed")
@@ -1028,6 +1039,7 @@ class TocEntry:
         if self.TypeID == MeshID: callback = SaveStingrayMesh
         if self.TypeID == TexID: callback = SaveStingrayTexture
         if self.TypeID == MaterialID: callback = SaveStingrayMaterial
+        if self.TypeID == ParticleID: callback = SaveStingrayParticle
         if callback == None: callback = SaveStingrayDump
 
         if self.IsLoaded:
@@ -1046,7 +1058,7 @@ class TocFileType:
         self.NumFiles = NumFiles
         self.unk2     = 16
         self.unk3     = 64
-    def Serialize(self, TocFile):
+    def Serialize(self, TocFile: MemoryStream):
         self.unk1     = TocFile.uint64(self.unk1)
         self.TypeID   = TocFile.uint64(self.TypeID)
         self.NumFiles = TocFile.uint64(self.NumFiles)
@@ -1396,7 +1408,7 @@ class TocManager():
             path += ".patch_0"
         self.ActivePatch.UpdatePath(path)
         self.ActivePatch.LocalName = name
-        PrettyPrint(self.ActivePatch.LocalName)
+        PrettyPrint(f"Creating Patch: {path}")
         self.Patches.append(self.ActivePatch)
 
     def SetActivePatch(self, Patch):
@@ -1478,7 +1490,7 @@ class StingrayMaterial:
 
         self.DEV_ShowEditor = False
         self.DEV_DDSPaths = []
-    def Serialize(self, f):
+    def Serialize(self, f: MemoryStream):
         self.undat1      = f.bytes(self.undat1, 12)
         self.EndOffset   = f.uint32(self.EndOffset)
         self.undat2      = f.uint64(self.undat2)
@@ -1607,7 +1619,7 @@ def AddMaterialToBlend(ID, StingrayMat, EmptyMatExists=False):
 
     Entry = Global_TocManager.GetEntry(int(ID), MaterialID)
     if Entry == None:
-        PrettyPrint(f"No Entry Found when getting Material ID: {ID}", "warn")
+        PrettyPrint(f"No Entry Found when getting Material ID: {ID}", "ERROR")
         return
     if Entry.MaterialTemplate != None: CreateAddonMaterial(ID, StingrayMat, mat, Entry)
     else: CreateGameMaterial(StingrayMat, mat)
@@ -1702,6 +1714,7 @@ def CreateAddonMaterial(ID, StingrayMat, mat, Entry):
     elif Entry.MaterialTemplate == "emissive": SetupEmissiveBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separateColor, normalMap)
     elif Entry.MaterialTemplate == "alphaclip": SetupAlphaClipBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separateColor, normalMap, mat)
     elif Entry.MaterialTemplate == "advanced": SetupAdvancedBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separateColor, normalMap, TextureNodes, group, mat)
+    elif Entry.MaterialTemplate == "translucent": SetupTranslucentBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separateColor, normalMap, mat)
     
 def SetupBasicBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separateColor, normalMap):
     bsdf.inputs['Emission Strength'].default_value = 0
@@ -1793,6 +1806,16 @@ def SetupAdvancedBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separate
     
     nodeTree.links.new(bsdf.outputs['BSDF'], outputNode.inputs['Surface'])
 
+def SetupTranslucentBlenderMaterial(nodeTree, inputNode, outputNode, bsdf, separateColor, normalMap, mat):
+    bsdf.inputs['Emission Strength'].default_value = 0
+    nodeTree.nodes.remove(separateColor)
+    inputNode.location = (-750, 0)
+    SetupNormalMapTemplate(nodeTree, inputNode, normalMap, bsdf)
+    nodeTree.links.new(bsdf.outputs['BSDF'], outputNode.inputs['Surface'])
+    mat.blend_method = 'BLEND'
+    bsdf.inputs['Alpha'].default_value = 0.02
+    bsdf.inputs['Base Color'].default_value = (1, 1, 1, 1)
+
 def CreateGenericMaterial(ID, StingrayMat, mat):
     idx = 0
     for TextureID in StingrayMat.TexIDs:
@@ -1873,6 +1896,17 @@ def GenerateMaterialTextures(Entry):
             if node.type == 'MATH' and node.operation == 'MULTIPLY':
                 node.inputs[1].default_value = emissionStrength
 
+    # update color and alpha of translucent
+    if "translucent" in group.node_tree.name:
+        colorVariable = Entry.LoadedData.ShaderVariables[7].values
+        baseColor = (colorVariable[0], colorVariable[1], colorVariable[2], 1)
+        alphaVariable = Entry.LoadedData.ShaderVariables[1].values[0]
+        PrettyPrint(f"Base color: {baseColor} Alpha: {alphaVariable}")
+        for node in group.node_tree.nodes:
+            if node.type == 'BSDF_PRINCIPLED':
+                node.inputs['Base Color'].default_value = baseColor
+                node.inputs['Alpha'].default_value = alphaVariable
+
     PrettyPrint(f"Found {len(filepaths)} Images: {filepaths}")
     return filepaths
 
@@ -1903,7 +1937,7 @@ class StingrayTexture:
         self.Height     = 0
         self.NumMipMaps = 0
         self.ArraySize  = 0
-    def Serialize(self, Toc, Gpu, Stream):
+    def Serialize(self, Toc: MemoryStream, Gpu, Stream):
         # clear header, so we dont have to deal with the .stream file
         if Toc.IsWriting():
             self.Unk1 = 0; self.Unk2  = 0xFFFFFFFF
@@ -2039,7 +2073,7 @@ class StingrayBones:
     def __init__(self):
         self.NumNames = self.NumLODLevels = self.Unk1 = 0
         self.UnkArray1 = []; self.BoneHashes = []; self.LODLevels = []; self.Names = []
-    def Serialize(self, f):
+    def Serialize(self, f: MemoryStream):
         self.NumNames = f.uint32(self.NumNames)
         self.NumLODLevels   = f.uint32(self.NumLODLevels)
         if f.IsReading():
@@ -2090,7 +2124,7 @@ class StingrayCompositeMesh:
         self.StreamInfoUnk = []
         self.StreamInfoUnk2 = 0
         self.GpuData = None
-    def Serialize(self, f, gpu):
+    def Serialize(self, f: MemoryStream, gpu):
         self.unk1               = f.uint64(self.unk1)
         self.NumExternalMeshes  = f.uint32(self.NumExternalMeshes)
         self.StreamInfoOffset   = f.uint32(self.StreamInfoOffset)
@@ -2129,13 +2163,159 @@ def LoadStingrayCompositeMesh(ID, TocData, GpuData, StreamData, Reload, MakeBlen
 
 #endregion
 
+#region StingrayParticles
+
+class StingrayParticles:
+    def __init__(self):
+        self.magic = 0
+        self.minLifetime = 0
+        self.maxLifetime = 0
+        self.unk1 = 0
+        self.unk2 = 0
+        self.numVariables = 0
+        self.numParticleSystems = 0
+        self.ParticleVariableHashes = []
+        self.ParticleVariablePositions = []
+        self.ParticleSystems = []
+
+    def Serialize(self, f: MemoryStream):
+        PrettyPrint("Serializing Particle")
+        self.magic = f.uint32(self.magic)
+        self.minLifetime = f.float32(self.minLifetime)
+        self.maxLifetime = f.float32(self.maxLifetime)
+        self.unk1 = f.uint32(self.unk1)
+        self.unk2 = f.uint32(self.unk2)
+        self.numVariables = f.uint32(self.numVariables)
+        self.numParticleSystems = f.uint32(self.numParticleSystems)
+        f.seek(f.tell() + 44)
+        if f.IsReading():
+            self.ParticleVariableHashes = [0 for n in range(self.numVariables)]
+            self.ParticleVariablePositions = [[0, 0, 0] for n in range(self.numVariables)]
+            self.ParticleSystems = [ParticleSystem() for n in range(self.numParticleSystems)]
+        
+        self.ParticleVariableHashes = [f.uint32(hash) for hash in self.ParticleVariableHashes]
+        self.ParticleVariablePositions = [f.vec3_float(position) for position in self.ParticleVariablePositions]
+
+        for system in self.ParticleSystems:
+            system.Serialize(f)
+        
+        #Debug Print
+        PrettyPrint(f"Particle System: {vars(self)}")
+        PrettyPrint(f"Systems:")
+        for system in self.ParticleSystems: 
+            PrettyPrint(vars(system))
+            PrettyPrint(f"Rotation: {vars(system.Rotation)}")
+            PrettyPrint(f"Components: {vars(system.ComponentList)}")
+
+class ParticleSystem:
+    def __init__(self):
+        self.maxNumParticles = 0
+        self.numComponents = 0
+        self.unk2 = 0
+        self.componentBitFlags = []
+        self.unk3 = 0
+        self.unk4 = 0
+        self.unk5 = 0
+        self.unk6 = 0
+        self.type1 = 0
+        self.type2 = 0
+        self.Rotation = ParticleRotation()
+        self.unknown = []
+        self.unk7 = 0
+        self.componentListOffset = 0
+        self.unk8 = 0
+        self.componentListSize = 0
+        self.unk9 = 0
+        self.unk10 = 0
+        self.offset3 = 0
+        self.particleSystemSize = 0
+        self.ComponentList = ComponentList()
+
+    def Serialize(self, f: MemoryStream):
+        PrettyPrint("Serializing Particle System")
+        startOffset = f.tell()
+        self.maxNumParticles = f.uint32(self.maxNumParticles)
+        self.numComponents = f.uint32(self.numComponents)
+        self.unk2 = f.uint32(self.unk2)
+        if f.IsReading():
+            self.componentBitFlags = [0 for n in range(self.numComponents)]
+        self.componentBitFlags = [f.uint32(flag) for flag in self.componentBitFlags]
+        f.seek(f.tell() + (64 - 4 * self.numComponents))
+        self.unk3 = f.uint32(self.unk3)
+        self.unk4 = f.uint32(self.unk4)
+        f.seek(f.tell() + 8)
+        self.unk5 = f.uint32(self.unk5)
+        f.seek(f.tell() + 4)
+        self.unk6 = f.uint32(self.unk6)
+        f.seek(f.tell() + 4)
+        self.type1 = f.uint32(self.type1)
+        self.type2 = f.uint32(self.type2)
+        f.seek(f.tell() + 4)
+        self.Rotation.Serialize(f)
+        if f.IsReading():
+            self.unknown = [0 for n in range(11)]
+        self.unknown = [f.float32(n) for n in self.unknown]
+        self.unk7 = f.uint32(self.unk7)
+        self.componentListOffset = f.uint32(self.componentListOffset)
+        self.unk8 = f.uint32(self.unk8)
+        self.componentListSize = f.uint32(self.componentListSize)
+        self.unk9 = f.uint32(self.unk9)
+        self.unk10 = f.uint32(self.unk10)
+        self.offset3 = f.uint32(self.offset3)
+        self.particleSystemSize = f.uint32(self.particleSystemSize)
+        f.seek(startOffset + self.componentListOffset)
+        if (self.unk3 == 0xFFFFFFFF): #non-rendering particle system
+            f.seek(startOffset + self.particleSystemSize)
+            return
+        self.ComponentList.Serialize(self, f)
+        f.seek(startOffset + self.particleSystemSize)
+
+class ParticleRotation:
+    def __init__(self):
+        self.xRow = [0 for n in range(3)]
+        self.yRow = [0 for n in range(3)]
+        self.zRow = [0 for n in range(3)]
+        self.unk = [0 for n in range(16)]
+
+    def Serialize(self, f: MemoryStream):
+        self.xRow = [f.float32(x) for x in self.xRow]
+        f.seek(f.tell() + 4)
+        self.yRow = [f.float32(y) for y in self.yRow]
+        f.seek(f.tell() + 4)
+        self.zRow = [f.float32(z) for z in self.zRow]
+        f.seek(f.tell() + 4)
+        self.unk = [f.uint8(n) for n in self.unk]
+
+class ComponentList:
+    def __init__(self):
+        self.componentList = []
+    
+    def Serialize(self, particleSystem: ParticleSystem, f: MemoryStream):
+        size = particleSystem.componentListSize - particleSystem.componentListOffset
+        if f.IsReading():
+            self.componentList = [0 for n in range(size)]
+        self.componentList = [f.uint8(component) for component in self.componentList]
+
+def LoadStingrayParticle(ID, TocData, GpuData, StreamData, Reload, MakeBlendObject):
+    f = MemoryStream(TocData)
+    Particle = StingrayParticles()
+    Particle.Serialize(f)
+    return Particle
+
+def SaveStingrayParticle(self, ID, TocData, GpuData, StreamData, LoadedData):
+    f = MemoryStream(TocData, IOMode="write") # Load in original TocData before overwriting it
+    LoadedData.Serialize(f)
+    return [f.Data, b"", b""]
+
+#endregion
+
 #region StingrayRawDump
 
 class StingrayRawDump:
     def __init__(self):
         return None
 
-    def Serialize(self, f):
+    def Serialize(self, f: MemoryStream):
         return self
 
 def LoadStingrayDump(ID, TocData, GpuData, StreamData, Reload, MakeBlendObject):
@@ -2159,7 +2339,7 @@ def SaveStingrayDump(self, ID, TocData, GpuData, StreamData, LoadedData):
 class StingrayMatrix4x4: # Matrix4x4: https://help.autodesk.com/cloudhelp/ENU/Stingray-SDK-Help/engine_c/plugin__api__types_8h.html#line_89
     def __init__(self):
         self.v = [float(0)]*16
-    def Serialize(self, f):
+    def Serialize(self, f: MemoryStream):
         self.v = [f.float32(value) for value in self.v]
         return self
 
@@ -2168,7 +2348,7 @@ class StingrayMatrix3x3: # Matrix3x3: https://help.autodesk.com/cloudhelp/ENU/St
         self.x = [0,0,0]
         self.y = [0,0,0]
         self.z = [0,0,0]
-    def Serialize(self, f):
+    def Serialize(self, f: MemoryStream):
         self.x = f.vec3_float(self.x)
         self.y = f.vec3_float(self.x)
         self.z = f.vec3_float(self.x)
@@ -2182,18 +2362,18 @@ class StingrayLocalTransform: # Stingray Local Transform: https://help.autodesk.
         self.dummy = 0 # Force 16 byte alignment
         self.Incriment = self.ParentBone = 0
 
-    def Serialize(self, f):
+    def Serialize(self, f: MemoryStream):
         self.rot    = self.rot.Serialize(f)
         self.pos    = f.vec3_float(self.pos)
         self.scale  = f.vec3_float(self.scale)
         self.dummy  = f.float32(self.dummy)
         return self
-    def SerializeV2(self, f): # Quick and dirty solution, unknown exactly what this is for
+    def SerializeV2(self, f: MemoryStream): # Quick and dirty solution, unknown exactly what this is for
         f.seek(f.tell()+48)
         self.pos    = f.vec3_float(self.pos)
         self.dummy  = f.float32(self.dummy)
         return self
-    def SerializeTransformEntry(self, f):
+    def SerializeTransformEntry(self, f: MemoryStream):
         self.Incriment = f.uint16(self.Incriment)
         self.ParentBone = f.uint16(self.ParentBone)
         return self
@@ -2205,7 +2385,7 @@ class TransformInfo: # READ ONLY
         self.PositionTransforms = []
         self.TransfromEntries = []
         self.NameHashes = []
-    def Serialize(self, f):
+    def Serialize(self, f: MemoryStream):
         if f.IsWriting():
             raise Exception("This struct is read only (write not implemented)")
         self.NumTransforms = f.uint32(self.NumTransforms)
@@ -2224,7 +2404,7 @@ class CustomizationInfo: # READ ONLY
         self.Slot      = ""
         self.Weight    = ""
         self.PieceType = ""
-    def Serialize(self, f):
+    def Serialize(self, f: MemoryStream):
         if f.IsWriting():
             raise Exception("This struct is read only (write not implemented)")
         try: # TODO: fix this, this is basically completely wrong, this is generic user data, but for now this works
@@ -2279,7 +2459,7 @@ class StreamComponentInfo:
         self.Format = self.FormatFromName(format)
         self.Index   = 0
         self.Unknown = 0
-    def Serialize(self, f):
+    def Serialize(self, f: MemoryStream):
         self.Type      = f.uint32(self.Type)
         self.Format    = f.uint32(self.Format)
         self.Index     = f.uint32(self.Index)
@@ -2340,7 +2520,7 @@ class StreamComponentInfo:
         elif self.Format == 29: return 4
         elif self.Format == 31: return 8
         raise Exception("Cannot get size of unknown vertex format: "+str(self.Format))
-    def SerializeComponent(self, f, value):
+    def SerializeComponent(self, f: MemoryStream, value):
         try:
             serialize_func = FUNCTION_LUTS.SERIALIZE_COMPONENT_LUT[self.Format]
             return serialize_func(f, value)
@@ -2353,7 +2533,7 @@ class BoneInfo:
         self.NumBones = self.unk1 = self.RealIndicesOffset = self.FakeIndicesOffset = self.NumFakeIndices = self.FakeIndicesUnk = 0
         self.Bones = self.RealIndices = self.FakeIndices = []
         self.DEV_RawData = bytearray()
-    def Serialize(self, f, end=None):
+    def Serialize(self, f: MemoryStream, end=None):
         if f.IsReading():
             self.DEV_RawData = bytearray(end-f.tell())
             start = f.tell()
@@ -2362,7 +2542,7 @@ class BoneInfo:
         self.DEV_RawData = f.bytes(self.DEV_RawData)
         return self
 
-    def Serialize_REAL(self, f): # still need to figure out whats up with the unknown bit
+    def Serialize_REAL(self, f: MemoryStream): # still need to figure out whats up with the unknown bit
         RelPosition = f.tell()
 
         self.NumBones       = f.uint32(self.NumBones)
@@ -2404,7 +2584,7 @@ class StreamInfo:
         self.UnkEndingBytes = bytearray(16)
         self.DEV_StreamInfoOffset    = self.DEV_ComponentInfoOffset = 0 # helper vars, not in file
 
-    def Serialize(self, f):
+    def Serialize(self, f: MemoryStream):
         self.DEV_StreamInfoOffset = f.tell()
         self.ComponentInfoID = f.uint64(self.ComponentInfoID)
         self.DEV_ComponentInfoOffset = f.tell()
@@ -2447,7 +2627,7 @@ class MeshSectionInfo:
         self.unk1 = self.VertexOffset=self.NumVertices=self.IndexOffset=self.NumIndices=self.unk2 = 0
         self.DEV_MeshInfoOffset=0 # helper var, not in file
         self.ID = ID
-    def Serialize(self, f):
+    def Serialize(self, f: MemoryStream):
         self.DEV_MeshInfoOffset = f.tell()
         self.unk1           = f.uint32(self.unk1)
         self.VertexOffset   = f.uint32(self.VertexOffset)
@@ -2462,7 +2642,7 @@ class MeshInfo:
         self.unk1 = self.unk3 = self.unk4 = self.TransformIndex = self.LodIndex = self.StreamIndex = self.NumSections = self.unk7 = self.unk8 = self.unk9 = self.NumSections_unk = self.MeshID = 0
         self.unk2 = bytearray(32); self.unk6 = bytearray(40)
         self.SectionIDs = self.Sections = []
-    def Serialize(self, f):
+    def Serialize(self, f: MemoryStream):
         self.unk1 = f.uint64(self.unk1)
         self.unk2 = f.bytes(self.unk2, 32)
         self.MeshID= f.uint32(self.MeshID)
@@ -2530,7 +2710,7 @@ class RawMeshClass:
         self.DEV_BoneInfo      = None
         self.DEV_BoneInfoIndex = 0
         self.DEV_Transform     = None
-    def IsPhysicsBody(self):
+    def IsCullingBody(self):
         IsPhysics = True
         for material in self.Materials:
             if material.MatID != material.DefaultMaterialName:
@@ -2540,7 +2720,7 @@ class RawMeshClass:
         IsLod = True
         if self.LodIndex == 0 or self.LodIndex == -1:
             IsLod = False
-        if self.IsPhysicsBody():
+        if self.IsCullingBody():
             IsLod = False
         return IsLod
     def IsStaticMesh(self):
@@ -2618,16 +2798,16 @@ class SerializeFunctions:
             mesh.VertexWeights[vidx] = component.SerializeComponent(gpu, mesh.VertexWeights[vidx])
             
             
-    def SerializeFloatComponent(f, value):
+    def SerializeFloatComponent(f: MemoryStream, value):
         return f.float32(value)
         
-    def SerializeVec2FloatComponent(f, value):
+    def SerializeVec2FloatComponent(f: MemoryStream, value):
         return f.vec2_float(value)
         
-    def SerializeVec3FloatComponent(f, value):
+    def SerializeVec3FloatComponent(f: MemoryStream, value):
         return f.vec3_float(value)
         
-    def SerializeRGBA8888Component(f, value):
+    def SerializeRGBA8888Component(f: MemoryStream, value):
         if f.IsReading():
             r = min(255, int(value[0]*255))
             g = min(255, int(value[1]*255))
@@ -2642,13 +2822,13 @@ class SerializeFunctions:
             value[3] = min(1, float(value[3]/255))
         return value
         
-    def SerializeVec4Uint32Component(f, value):
+    def SerializeVec4Uint32Component(f: MemoryStream, value):
         return f.vec4_uint32(value)
         
-    def SerializeVec4Uint8Component(f, value):
+    def SerializeVec4Uint8Component(f: MemoryStream, value):
         return f.vec4_uint8(value)
         
-    def SerializeVec41010102Component(f, value):
+    def SerializeVec41010102Component(f: MemoryStream, value):
         if f.IsReading():
             value = TenBitUnsigned(f.uint32(0))
             value[3] = 0 # seems to be needed for weights
@@ -2656,22 +2836,22 @@ class SerializeFunctions:
             f.uint32(MakeTenBitUnsigned(value))
         return value
         
-    def SerializeUnkNormalComponent(f, value):
+    def SerializeUnkNormalComponent(f: MemoryStream, value):
         if isinstance(value, int):
             return f.uint32(value)
         else:
             return f.uint32(0)
             
-    def SerializeVec2HalfComponent(f, value):
+    def SerializeVec2HalfComponent(f: MemoryStream, value):
         return f.vec2_half(value)
         
-    def SerializeVec4HalfComponent(f, value):
+    def SerializeVec4HalfComponent(f: MemoryStream, value):
         if isinstance(value, float):
             return f.vec4_half([value,value,value,value])
         else:
             return f.vec4_half(value)
             
-    def SerializeUnknownComponent(f, value):
+    def SerializeUnknownComponent(f: MemoryStream, value):
         raise Exception("Cannot serialize unknown vertex format!")
               
             
@@ -2716,7 +2896,7 @@ class StingrayMeshFile:
         self.TransformInfo     = TransformInfo()
         self.BoneNames = None
     # -- Serialize Mesh -- #
-    def Serialize(self, f, gpu, redo_offsets = False, BlenderOpts=None):
+    def Serialize(self, f: MemoryStream, gpu, redo_offsets = False, BlenderOpts=None):
         PrettyPrint("Serialize")
         if f.IsWriting() and not redo_offsets:
             # duplicate bone info sections if needed
@@ -2943,7 +3123,7 @@ class StingrayMeshFile:
             self.Serialize(f, gpu, True)
         return self
 
-    def SerializeGpuData(self, gpu, BlenderOpts=None):
+    def SerializeGpuData(self, gpu: MemoryStream, BlenderOpts=None):
         PrettyPrint("SerializeGpuData")
         # Init Raw Meshes If Reading
         if gpu.IsReading():
@@ -2964,7 +3144,7 @@ class StingrayMeshFile:
                 self.SerializeVertexBuffer(gpu, Stream_Info, stream_idx, OrderedMeshes)
                 self.SerializeIndexBuffer(gpu, Stream_Info, stream_idx, OrderedMeshes)
 
-    def SerializeIndexBuffer(self, gpu, Stream_Info, stream_idx, OrderedMeshes):
+    def SerializeIndexBuffer(self, gpu: MemoryStream, Stream_Info, stream_idx, OrderedMeshes):
         # get indices
         IndexOffset  = 0
         CompiledIncorrectly = False
@@ -3043,7 +3223,7 @@ class StingrayMeshFile:
                         Section.NumVertices = RealNumVerts
                     self.ReInitRawMeshVerts(mesh)
 
-    def SerializeVertexBuffer(self, gpu, Stream_Info, stream_idx, OrderedMeshes):
+    def SerializeVertexBuffer(self, gpu: MemoryStream, Stream_Info, stream_idx, OrderedMeshes):
         # Vertex Buffer
         VertexOffset = 0
         if gpu.IsWriting(): Stream_Info.VertexBufferOffset = gpu.tell()
@@ -3153,7 +3333,7 @@ class StingrayMeshFile:
             if BlenderOpts:    
                 if BlenderOpts.get("Force2UVs"):
                     NumUVs = 2
-                if BlenderOpts.get("Force1Group"):
+                if IsSkinned and NumBoneIndices > 1 and BlenderOpts.get("Force1Group"):
                     NumBoneIndices = 1
 
             for mesh in OrderedMeshes[stream_idx][0]: # fill default values for meshes which are missing some components
@@ -3200,7 +3380,7 @@ def LoadStingrayMesh(ID, TocData, GpuData, StreamData, Reload, MakeBlendObject):
     return StingrayMesh
 
 def SaveStingrayMesh(self, ID, TocData, GpuData, StreamData, StingrayMesh, BlenderOpts=None):
-    if BlenderOpts.get("AutoLods"):
+    if BlenderOpts and BlenderOpts.get("AutoLods"):
         lod0 = None
         for mesh in StingrayMesh.RawMeshes:
             if mesh.LodIndex == 0:
@@ -3328,7 +3508,8 @@ def MaterialsNumberNames(self):
             return True
         for slot in mesh.material_slots:
             if slot.material:
-                if not slot.material.name.isnumeric():
+                materialName = slot.material.name
+                if not materialName.isnumeric() and materialName != "StingrayDefaultMaterial":
                     invalidMaterials += 1
             else:
                 invalidMaterials += 1
@@ -3489,7 +3670,7 @@ class DefaultLoadArchiveOperator(Operator):
     bl_idname = "helldiver2.archive_import_default"
 
     def execute(self, context):
-        path = Global_gamepath + "9ba626afa44a3aa3"
+        path = Global_gamepath + BaseArchiveHexID
         if not os.path.exists(path):
             self.report({'ERROR'}, "Current Filepath is Invalid. Change this in the Settings")
             context.scene.Hd2ToolPanelSettings.MenuExpanded = True
@@ -3600,20 +3781,18 @@ class CreatePatchFromActiveOperator(Operator):
     bl_idname = "helldiver2.archive_createpatch"
     bl_description = "Creates Patch from Current Active Archive"
 
-    patch_name: StringProperty(name="Mod Name")
-
     def execute(self, context):
         if ArchivesNotLoaded(self):
             return{'CANCELLED'}
         
-        if Global_TocManager.ActiveArchive.Name != "9ba626afa44a3aa3":
-            if bpy.context.scene.Hd2ToolPanelSettings.PatchBaseArchiveOnly:
-                self.report({'ERROR'}, f"Patch Created Was Not From Base Archive! Please select the base archive to create a New Patch.")
-                return{'CANCELLED'}
-            else:
-                self.report({'WARNING'}, f"Patch Created Was Not From Base Archive!")
-
-        Global_TocManager.CreatePatchFromActive(self.patch_name)
+        if bpy.context.scene.Hd2ToolPanelSettings.PatchBaseArchiveOnly:
+            baseArchivePath = Global_gamepath + BaseArchiveHexID
+            Global_TocManager.LoadArchive(baseArchivePath)
+            Global_TocManager.SetActiveByName(BaseArchiveHexID)
+        else:
+            self.report({'WARNING'}, f"Patch Created Was Not From Base Archive.")
+        
+        Global_TocManager.CreatePatchFromActive()
 
         # Redraw
         for area in context.screen.areas:
@@ -3952,6 +4131,11 @@ class RenamePatchEntryOperator(Operator):
             raise Exception("Entry does not exist in patch (cannot rename non patch entries)")
         if Entry != None and self.NewFileID != "":
             Entry.FileID = int(self.NewFileID)
+
+        # Redraw
+        for area in context.screen.areas:
+            if area.type == "VIEW_3D": area.tag_redraw()
+            
         return{'FINISHED'}
 
     def invoke(self, context, event):
@@ -4605,6 +4789,65 @@ class SetMaterialTexture(Operator, ImportHelper):
 
 #endregion
 
+#region Operators: Particles
+class SaveStingrayParticleOperator(Operator):
+    bl_label  = "Save Particle"
+    bl_idname = "helldiver2.particle_save"
+    bl_description = "Saves Particle"
+    bl_options = {'REGISTER', 'UNDO'} 
+
+    object_id: StringProperty()
+    def execute(self, context):
+        mode = context.mode
+        if mode != 'OBJECT':
+            self.report({'ERROR'}, f"You are Not in OBJECT Mode. Current Mode: {mode}")
+            return {'CANCELLED'}
+        if MeshNotValidToSave(self):
+            return {'CANCELLED'}
+        wasSaved = Global_TocManager.Save(int(self.object_id), ParticleID)
+
+        # we can handle below later when we put a particle object into the blender scene
+
+        # if not wasSaved:
+        #         for object in bpy.data.objects:
+        #             try:
+        #                 ID = object["Z_ObjectID"]
+        #                 self.report({'ERROR'}, f"Archive for entry being saved is not loaded. Object: {object.name} ID: {ID}")
+        #                 return{'CANCELLED'}
+        #             except:
+        #                 self.report({'ERROR'}, f"Failed to find object with custom property ID. Object: {object.name}")
+        #                 return{'CANCELLED'}
+        # self.report({'INFO'}, f"Saved Mesh Object ID: {self.object_id}")
+        return{'FINISHED'}
+class ImportStingrayParticleOperator(Operator):
+    bl_label = "Import Particle"
+    bl_idname = "helldiver2.archive_particle_import"
+    bl_description = "Loads Particles into Blender Scene"
+
+    object_id: StringProperty()
+    def execute(self, context):
+        EntriesIDs = IDsFromString(self.object_id)
+        Errors = []
+        for EntryID in EntriesIDs:
+            if len(EntriesIDs) == 1:
+                Global_TocManager.Load(EntryID, ParticleID)
+            else:
+                try:
+                    Global_TocManager.Load(EntryID, ParticleID)
+                except Exception as error:
+                    Errors.append([EntryID, error])
+
+        if len(Errors) > 0:
+            PrettyPrint("\nThese errors occurred while attempting to load particles...", "error")
+            idx = 0
+            for error in Errors:
+                PrettyPrint(f"  Error {idx}: for particle {error[0]}", "error")
+                PrettyPrint(f"    {error[1]}\n", "error")
+                idx += 1
+            raise Exception("One or more particles failed to load")
+        return{'FINISHED'}
+#endregion
+
 #region Operators: Clipboard Functionality
 
 class CopyArchiveEntryOperator(Operator):
@@ -4955,8 +5198,6 @@ def RepatchMeshes(self, path):
             PrettyPrint(f"Failed to patch mesh: {error[1]} in patch: {error[0]} Error: {error[2]}", error[3])
         self.report({'ERROR'}, f"Failed to patch {len(errors)} meshes. Please check logs to see the errors")
 
-#region Operators: Context Menu
-
 def LoopPatchPaths(list, filepath):
     for path in os.listdir(filepath):
         path = f"{filepath}\{path}"
@@ -4971,6 +5212,8 @@ def LoopPatchPaths(list, filepath):
                 list.append(strippedpath)
         else:
             PrettyPrint(f"Path: {path} is not a patch file. Ignoring file.", "warn")
+            
+#region Operators: Context Menu
 
 stored_custom_properties = {}
 class CopyCustomPropertyOperator(Operator):
@@ -5135,7 +5378,7 @@ class Hd2ToolPanelSettings(PropertyGroup):
     ImportMaterials  : BoolProperty(name="Import Materials", description = "Fully import materials by appending the textures utilized, otherwise create placeholders", default = True)
     ImportLods       : BoolProperty(name="Import LODs", description = "Import LODs", default = False)
     ImportGroup0     : BoolProperty(name="Import Group 0 Only", description = "Only import the first vertex group, ignore others", default = True)
-    ImportPhysics    : BoolProperty(name="Import Physics", description = "Import Physics Bodies", default = False)
+    ImportCulling    : BoolProperty(name="Import Culling Bounds", description = "Import Culling Bodies", default = False)
     ImportStatic     : BoolProperty(name="Import Static Meshes", description = "Import Static Meshes", default = False)
     MakeCollections  : BoolProperty(name="Make Collections", description = "Make new collection when importing meshes", default = False)
     Force2UVs        : BoolProperty(name="Force 2 UV Sets", description = "Force at least 2 UV sets, some materials require this", default = True)
@@ -5223,6 +5466,9 @@ class HellDivers2ToolsPanel(Panel):
             row.operator("helldiver2.material_import", icon='IMPORT', text="").object_id = str(Entry.FileID)
             row.operator("helldiver2.material_showeditor", icon='MOD_LINEART', text="").object_id = str(Entry.FileID)
             self.draw_material_editor(Entry, box, row)
+        elif Entry.TypeID == ParticleID:
+            row.operator("helldiver2.particle_save", icon='FILE_BLEND', text = "").object_id = str(Entry.FileID)
+            row.operator("helldiver2.archive_particle_import", icon='IMPORT', text = "").object_id = str(Entry.FileID)
         if Global_TocManager.IsInPatch(Entry):
             props = row.operator("helldiver2.archive_removefrompatch", icon='FAKE_USER_ON', text="")
             props.object_id     = str(Entry.FileID)
@@ -5289,7 +5535,7 @@ class HellDivers2ToolsPanel(Panel):
             row.prop(scene.Hd2ToolPanelSettings, "ImportLods")
             row.prop(scene.Hd2ToolPanelSettings, "ImportGroup0")
             row.prop(scene.Hd2ToolPanelSettings, "MakeCollections")
-            row.prop(scene.Hd2ToolPanelSettings, "ImportPhysics")
+            row.prop(scene.Hd2ToolPanelSettings, "ImportCulling")
             row.prop(scene.Hd2ToolPanelSettings, "ImportStatic")
             row.prop(scene.Hd2ToolPanelSettings, "RemoveGoreMeshes")
             row = mainbox.row(); row.separator(); row.label(text="Export Options"); box = row.box(); row = box.grid_flow(columns=1)
@@ -5426,14 +5672,18 @@ class HellDivers2ToolsPanel(Panel):
                     type_icon = 'FILE_IMAGE'
                 elif Type.TypeID == MaterialID:
                     type_icon = 'MATERIAL' 
+                elif Type.TypeID == ParticleID: 
+                    type_icon = 'PARTICLES'
                 elif showExtras:
                     if Type.TypeID == BoneID: type_icon = 'BONE_DATA'
                     elif Type.TypeID == WwiseBankID:  type_icon = 'OUTLINER_DATA_SPEAKER'
                     elif Type.TypeID == WwiseDepID: type_icon = 'OUTLINER_DATA_SPEAKER'
                     elif Type.TypeID == WwiseStreamID:  type_icon = 'OUTLINER_DATA_SPEAKER'
                     elif Type.TypeID == WwiseMetaDataID: type_icon = 'OUTLINER_DATA_SPEAKER'
-                    elif Type.TypeID == ParticleID: type_icon = 'PARTICLES'
                     elif Type.TypeID == AnimationID: type_icon = 'ARMATURE_DATA'
+                    elif Type.TypeID == StateMachineID: type_icon = 'DRIVER'
+                    elif Type.TypeID == StringID: type_icon = 'WORDWRAP_ON'
+                    elif Type.TypeID == PhysicsID: type_icon = 'PHYSICS'
                 else:
                     continue
                 
@@ -5460,7 +5710,9 @@ class HellDivers2ToolsPanel(Panel):
                 sub.operator("helldiver2.collapse_section", text=f"{typeName}: {str(Type.TypeID)}", icon=fold_icon, emboss=False).type = str(Type.TypeID)
 
                 # Skip drawling entries if section hidden
-                if not show: continue
+                if not show: 
+                    sub.label(icon=type_icon)
+                    continue
                 
                 #sub.operator("helldiver2.import_type", icon='IMPORT', text="").object_typeid = str(Type.TypeID)
                 sub.operator("helldiver2.select_type", icon='RESTRICT_SELECT_OFF', text="").object_typeid = str(Type.TypeID)
@@ -5534,6 +5786,7 @@ class WM_MT_button_context(Menu):
         AreAllMeshes    = True
         AreAllTextures  = True
         AreAllMaterials = True
+        AreAllParticles = True
         SingleEntry = True
         NumSelected = len(Global_TocManager.SelectedEntries)
         if len(Global_TocManager.SelectedEntries) > 1:
@@ -5542,26 +5795,36 @@ class WM_MT_button_context(Menu):
             if SelectedEntry.TypeID == MeshID:
                 AreAllTextures = False
                 AreAllMaterials = False
+                AreAllParticles = False
             elif SelectedEntry.TypeID == TexID:
                 AreAllMeshes = False
                 AreAllMaterials = False
+                AreAllParticles = False
             elif SelectedEntry.TypeID == MaterialID:
                 AreAllTextures = False
                 AreAllMeshes = False
+                AreAllParticles = False
+            elif SelectedEntry.TypeID == ParticleID:
+                AreAllTextures = False
+                AreAllMeshes = False
+                AreAllMaterials = False
             else:
                 AreAllMeshes = False
                 AreAllTextures = False
                 AreAllMaterials = False
+                AreAllParticles = False
         
         RemoveFromPatchName = "Remove From Patch" if SingleEntry else f"Remove {NumSelected} From Patch"
         AddToPatchName = "Add To Patch" if SingleEntry else f"Add {NumSelected} To Patch"
         ImportMeshName = "Import Mesh" if SingleEntry else f"Import {NumSelected} Meshes"
         ImportTextureName = "Import Texture" if SingleEntry else f"Import {NumSelected} Textures"
         ImportMaterialName = "Import Material" if SingleEntry else f"Import {NumSelected} Materials"
+        ImportParticleName = "Import Particle" if SingleEntry else f"Import {NumSelected} Particles"
         DumpObjectName = "Export Object Dump" if SingleEntry else f"Export {NumSelected} Object Dumps"
         ImportDumpObjectName = "Import Object Dump" if SingleEntry else f"Import {NumSelected} Object Dumps"
         SaveTextureName = "Save Blender Texture" if SingleEntry else f"Save Blender {NumSelected} Textures"
         SaveMaterialName = "Save Material" if SingleEntry else f"Save {NumSelected} Materials"
+        SaveParticleName = "Save Particle" if SingleEntry else f"Save {NumSelected} Particles"
         UndoName = "Undo Modifications" if SingleEntry else f"Undo {NumSelected} Modifications"
         CopyName = "Copy Entry" if SingleEntry else f"Copy {NumSelected} Entries"
         
@@ -5596,10 +5859,12 @@ class WM_MT_button_context(Menu):
         row.separator()
         if AreAllMeshes:
             row.operator("helldiver2.archive_mesh_import", icon='IMPORT', text=ImportMeshName).object_id = FileIDStr
-        if AreAllTextures:
+        elif AreAllTextures:
             row.operator("helldiver2.texture_import", icon='IMPORT', text=ImportTextureName).object_id = FileIDStr
         elif AreAllMaterials:
             row.operator("helldiver2.material_import", icon='IMPORT', text=ImportMaterialName).object_id = FileIDStr
+        elif AreAllParticles:
+            row.operator("helldiver2.archive_particle_import", icon='IMPORT', text=ImportParticleName).object_id = FileIDStr
         # Draw export buttons
         row.separator()
         if SingleEntry:
@@ -5637,6 +5902,8 @@ class WM_MT_button_context(Menu):
                 row.operator("helldiver2.material_set_template", icon='MATSHADERBALL').entry_id = str(Entry.FileID)
                 if Entry.LoadedData != None:
                     row.operator("helldiver2.copytest", icon='COPY_ID', text="Copy Parent Material Entry ID").text = str(Entry.LoadedData.ParentMaterialID)
+        elif AreAllParticles:
+            row.operator("helldiver2.particle_save", icon='FILE_BLEND', text=SaveParticleName).object_id = FileIDStr
         # Draw copy ID buttons
         if SingleEntry:
             row.separator()
@@ -5746,6 +6013,8 @@ classes = (
     MaterialShaderVariableEntryOperator,
     MaterialShaderVariableColorEntryOperator,
     MeshFixOperator,
+    ImportStingrayParticleOperator,
+    SaveStingrayParticleOperator,
 )
 
 Global_TocManager = TocManager()
