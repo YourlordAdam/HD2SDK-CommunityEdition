@@ -17,7 +17,6 @@ from pathlib import Path
 import configparser
 import requests
 import json
-import sys
 
 #import pyautogui 
 
@@ -906,7 +905,7 @@ def UpdateConfig():
 #region Classes and Functions: Stingray Archives
 
 class TocEntry:
-    
+
     def __init__(self):
         self.FileID = self.TypeID = self.TocDataOffset = self.Unknown1 = self.GpuResourceOffset = self.Unknown2 = self.TocDataSize = self.GpuResourceSize = self.EntryIndex = self.StreamSize = self.StreamOffset = 0
         self.Unknown3 = 16
@@ -1001,7 +1000,7 @@ class TocEntry:
         if self.TypeID == CompositeMeshID: callback = LoadStingrayCompositeMesh
         if self.TypeID == Hash64("bones"): callback = LoadStingrayBones
         if callback == None: callback = LoadStingrayDump
-        
+
         if callback != None:
             self.LoadedData = callback(self.FileID, self.TocData, self.GpuData, self.StreamData, Reload, MakeBlendObject)
             if self.LoadedData == None: raise Exception("Archive Entry Load Failed")
@@ -1618,7 +1617,7 @@ def AddMaterialToBlend(ID, StingrayMat, EmptyMatExists=False):
 
     Entry = Global_TocManager.GetEntry(int(ID), MaterialID)
     if Entry == None:
-        PrettyPrint(f"No Entry Found when getting Material ID: {ID}", "warn")
+        PrettyPrint(f"No Entry Found when getting Material ID: {ID}", "ERROR")
         return
     if Entry.MaterialTemplate != None: CreateAddonMaterial(ID, StingrayMat, mat, Entry)
     else: CreateGameMaterial(StingrayMat, mat)
@@ -5208,21 +5207,6 @@ def LoopPatchPaths(list, filepath):
             PrettyPrint(f"Path: {path} is not a patch file. Ignoring file.", "warn")
             
 #region Operators: Context Menu
-
-def LoopPatchPaths(list, filepath):
-    for path in os.listdir(filepath):
-        path = f"{filepath}\{path}"
-        if Path(path).is_dir():
-            PrettyPrint(f"Looking in folder: {path}")
-            LoopPatchPaths(list, path)
-            continue
-        if "patch_" in path:
-            PrettyPrint(f"Adding Path: {path}")
-            strippedpath = path.replace(".gpu_resources", "").replace(".stream", "")
-            if strippedpath not in list:
-                list.append(strippedpath)
-        else:
-            PrettyPrint(f"Path: {path} is not a patch file. Ignoring file.", "warn")
 
 stored_custom_properties = {}
 class CopyCustomPropertyOperator(Operator):
