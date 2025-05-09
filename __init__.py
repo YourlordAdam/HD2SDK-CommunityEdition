@@ -501,9 +501,11 @@ def GetMeshData(og_object):
 def GetObjectsMeshData():
     objects = bpy.context.selected_objects
     bpy.ops.object.select_all(action='DESELECT')
-    data = []
+    data = {}
     for object in objects:
-        data.append(GetMeshData(object))
+        ID = object["Z_ObjectID"]
+        data[ID] = GetMeshData(object)
+        #data.append(GetMeshData(object))
     return data
 
 def NameFromMesh(mesh, id, customization_info, bone_names, use_sufix=True):
@@ -4074,14 +4076,19 @@ class SaveStingrayMeshOperator(Operator):
             return {'CANCELLED'}
         if MeshNotValidToSave(self):
             return {'CANCELLED'}
+        try:
+            ID = bpy.context.selected_objects[0]["Z_ObjectID"]
+        except:
+            self.report({'ERROR'}, f"{bpy.context.selected_objects[0].name} has no HD2 custom properties")
+            return{'CANCELLED'}
         model = GetObjectsMeshData()
         BlenderOpts = bpy.context.scene.Hd2ToolPanelSettings.get_settings_dict()
         Entry = Global_TocManager.GetEntry(int(ID), MeshID)
+        m = model[ID]
         for n in range(len(Entry.LoadedData.RawMeshes)):
-            for m in model:
-                if Entry.LoadedData.RawMeshes[n].MeshInfoIndex == m.MeshInfoIndex:
-                    Entry.LoadedData.RawMeshes[n] = m
-                    break
+            if Entry.LoadedData.RawMeshes[n].MeshInfoIndex == m.MeshInfoIndex:
+                Entry.LoadedData.RawMeshes[n] = m
+                break
         wasSaved = Entry.Save(BlenderOpts=BlenderOpts)
         if not wasSaved:
                 for object in bpy.data.objects:
@@ -4119,15 +4126,15 @@ class BatchSaveStingrayMeshOperator(Operator):
             except:
                 self.report({'ERROR'}, f"{object.name} has no HD2 custom properties")
                 return{'CANCELLED'}
-        model = GetObjectsMeshData()
+        MeshData = GetObjectsMeshData()
         BlenderOpts = bpy.context.scene.Hd2ToolPanelSettings.get_settings_dict()
         for ID in IDs:
             Entry = Global_TocManager.GetEntry(int(ID), MeshID)
+            BlenderMesh = MeshData[ID]
             for n in range(len(Entry.LoadedData.RawMeshes)):
-                for m in model:
-                    if Entry.LoadedData.RawMeshes[n].MeshInfoIndex == m.MeshInfoIndex:
-                        Entry.LoadedData.RawMeshes[n] = m
-                        break
+                if Entry.LoadedData.RawMeshes[n].MeshInfoIndex == BlenderMesh.MeshInfoIndex:
+                    Entry.LoadedData.RawMeshes[n] = BlenderMesh
+                    break
             wasSaved = Entry.Save(BlenderOpts=BlenderOpts)
             if not wasSaved:
                 for object in bpy.data.objects:
