@@ -3378,7 +3378,7 @@ def LoadStingrayMesh(ID, TocData, GpuData, StreamData, Reload, MakeBlendObject):
     return StingrayMesh
 
 def SaveStingrayMesh(self, ID, TocData, GpuData, StreamData, StingrayMesh, BlenderOpts=None):
-    if BlenderOpts.get("AutoLods"):
+    if BlenderOpts and BlenderOpts.get("AutoLods"):
         lod0 = None
         for mesh in StingrayMesh.RawMeshes:
             if mesh.LodIndex == 0:
