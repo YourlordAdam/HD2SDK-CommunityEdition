@@ -3331,7 +3331,7 @@ class StingrayMeshFile:
             if BlenderOpts:    
                 if BlenderOpts.get("Force2UVs"):
                     NumUVs = 2
-                if BlenderOpts.get("Force1Group"):
+                if IsSkinned and NumBoneIndices > 1 and BlenderOpts.get("Force1Group"):
                     NumBoneIndices = 1
 
             for mesh in OrderedMeshes[stream_idx][0]: # fill default values for meshes which are missing some components
