@@ -78,6 +78,8 @@ Global_BoneNames = {}
 
 #region Common Hashes & Lookups
 
+BaseArchiveHexID = "9ba626afa44a3aa3"
+
 CompositeMeshID = 14191111524867688662
 MeshID = 16187218042980615487
 TexID  = 14790446551990181426
@@ -844,7 +846,7 @@ def LoadArchiveHashes():
         for innerKey in data[title]:
             Global_ArchiveHashes.append([innerKey, title + ": " + data[title][innerKey]])
 
-    Global_ArchiveHashes.append(["9ba626afa44a3aa3", "SDK: Base Patch Archive"])
+    Global_ArchiveHashes.append([BaseArchiveHexID, "SDK: Base Patch Archive"])
 
 def LoadShaderVariables():
     global Global_ShaderVariables
@@ -1395,7 +1397,7 @@ class TocManager():
             path += ".patch_0"
         self.ActivePatch.UpdatePath(path)
         self.ActivePatch.LocalName = name
-        PrettyPrint(self.ActivePatch.LocalName)
+        PrettyPrint(f"Creating Patch: {path}")
         self.Patches.append(self.ActivePatch)
 
     def SetActivePatch(self, Patch):
@@ -3662,7 +3664,7 @@ class DefaultLoadArchiveOperator(Operator):
     bl_idname = "helldiver2.archive_import_default"
 
     def execute(self, context):
-        path = Global_gamepath + "9ba626afa44a3aa3"
+        path = Global_gamepath + BaseArchiveHexID
         if not os.path.exists(path):
             self.report({'ERROR'}, "Current Filepath is Invalid. Change this in the Settings")
             context.scene.Hd2ToolPanelSettings.MenuExpanded = True
@@ -3773,20 +3775,18 @@ class CreatePatchFromActiveOperator(Operator):
     bl_idname = "helldiver2.archive_createpatch"
     bl_description = "Creates Patch from Current Active Archive"
 
-    patch_name: StringProperty(name="Mod Name")
-
     def execute(self, context):
         if ArchivesNotLoaded(self):
             return{'CANCELLED'}
         
-        if Global_TocManager.ActiveArchive.Name != "9ba626afa44a3aa3":
-            if bpy.context.scene.Hd2ToolPanelSettings.PatchBaseArchiveOnly:
-                self.report({'ERROR'}, f"Patch Created Was Not From Base Archive! Please select the base archive to create a New Patch.")
-                return{'CANCELLED'}
-            else:
-                self.report({'WARNING'}, f"Patch Created Was Not From Base Archive!")
-
-        Global_TocManager.CreatePatchFromActive(self.patch_name)
+        if bpy.context.scene.Hd2ToolPanelSettings.PatchBaseArchiveOnly:
+            baseArchivePath = Global_gamepath + BaseArchiveHexID
+            Global_TocManager.LoadArchive(baseArchivePath)
+            Global_TocManager.SetActiveByName(BaseArchiveHexID)
+        else:
+            self.report({'WARNING'}, f"Patch Created Was Not From Base Archive.")
+        
+        Global_TocManager.CreatePatchFromActive()
 
         # Redraw
         for area in context.screen.areas:
