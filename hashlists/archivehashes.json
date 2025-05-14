@@ -86,7 +86,10 @@
         "8710c8ba1e22b42c": "I-92 Fire Fighter",
         "2351919ff531f494": "GS-11 Democracy's Deputy",
         "00cf0ef7df912a6e":	"GS-66 Lawmaker",
-        "14fe2734dcb8d1ed":	"GS-17 Frontier Marshall"
+        "14fe2734dcb8d1ed":	"GS-17 Frontier Marshall",
+        "39fe1f0308f4514a": "RE-1061 Parade Commander",
+        "f50c7fd427839c47": "RE-824 Bearer of the Standard",
+        "d923906f8b815987": "RE-2310 Honorary Guard"
     },
 
     "Helmet": {
@@ -169,7 +172,10 @@
         "292b09dac80ce1de": "UF-84 Doubt Killer",
         "dbe6c57c7e3b8747": "GS-11 Democracy's Deputy",
         "a6065ffb410d5e1c":	"GS-66 Lawmaker",
-        "213bbf4edad25223":	"GS-17 Frontier Marshall"
+        "213bbf4edad25223":	"GS-17 Frontier Marshall",
+        "2fb07d7a9b9252aa": "RE-1061 Parade Commander",
+        "94b8a07a98780017": "RE-824 Bearer of the Standard",
+        "b4d15b145b3f7677": "RE-2310 Honorary Guard"
     },
 
     "Cape": {
@@ -229,7 +235,9 @@
     },
     
     "Illuminate": {
-        "046d4441a6dae0a9": "Watcher & Warp Ship",
+        "046d4441a6dae0a9": "Watcher & Warp Ship & Stingray",
+        "9c42c3028d67fb2a": "Stingray",
+        "2defbee4485f3ce0":	"Crescent Overseer",
         "71b78f82c6d9fce5": "Elevated Overseer",
         "cd552726e679d434": "Overseer",
         "9230ae99f0ee6c03": "Overseers",
@@ -249,6 +257,7 @@
         "499591b12328acbd": "Hulk",
         "eda39e568ad5f302": "Hulk",
         "094394c2a2c22f36": "Scout Strider",
+        "2c8d8cc831d0c732": "Reinforced Scout Strider",
         "063a5b895ed482e6": "Tank",
         "1a3dc966179bd5a4": "Tank",
         "62ec9c912c88c15d": "Tank",
@@ -304,7 +313,8 @@
         "21e90918df69eff7": "G-16 Impact",
         "543ff1ff0bd82b44": "G-23 Stun",
         "dfb81f9917285965": "G-123 Thermite",
-        "f590569dbbc6fe2d": "G-50 Seeker"
+        "f590569dbbc6fe2d": "G-50 Seeker",
+        "1721eee4581a9c54": "G-142 PyroTech"
     },
     "Standard Throwable": {
         "7580e5ae368440ae": "G-6 Frag",
@@ -334,6 +344,7 @@
     },
     "Marksman Rifle": {
         "68aa9a343aa4333c": "R-2124 Constitution",
+        "e829d44fb5653ec4": "R-2 Amendment",
         "2404fa21fe49c32d": "R-63 Diligence & R-63CS Diligence Counter Sniper"
     },
     "Shotgun": {
@@ -366,8 +377,9 @@
     },
 
     "Melee": {
-        "56aa04adbbeea69f": "CQC-30 Stun Baton & CQC-19 Stun Lance & Combat Hatchet",
-        "49de16e1343250e4": "Entrenchment Tool"
+        "56aa04adbbeea69f": "CQC-30 Stun Baton & CQC-19 Stun Lance & Combat Hatchet & CQC-2 Saber",
+        "49de16e1343250e4": "Entrenchment Tool",
+        "c40e3b3fa79052ec": "CQC-1 One True Flag"
     },
 
     "Pistol": {
