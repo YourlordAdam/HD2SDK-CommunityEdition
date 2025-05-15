@@ -4312,6 +4312,9 @@ class BatchSaveStingrayMeshOperator(Operator):
         return{'FINISHED'}
 
 def SaveMeshMaterials(objects):
+    if not bpy.context.scene.Hd2ToolPanelSettings.AutoSaveMeshMaterials:
+        PrettyPrint(f"Skipping saving of materials as setting is disabled")
+        return
     PrettyPrint(f"Saving materials for {len(objects)} objects")
     materials = []
     for object in objects:
@@ -4541,7 +4544,9 @@ class SaveTextureFromDDSOperator(Operator, ImportHelper):
     def execute(self, context):
         if PatchesNotLoaded(self):
             return {'CANCELLED'}
-        SaveImageDDS(self.filepath, self.object_id)
+        EntriesIDs = IDsFromString(self.object_id)
+        for EntryID in EntriesIDs:
+            SaveImageDDS(self.filepath, self.object_id)
         
         # Redraw
         for area in context.screen.areas:
@@ -4560,7 +4565,9 @@ class SaveTextureFromPNGOperator(Operator, ImportHelper):
     def execute(self, context):
         if PatchesNotLoaded(self):
             return {'CANCELLED'}
-        SaveImagePNG(self.filepath, self.object_id)
+        EntriesIDs = IDsFromString(self.object_id)
+        for EntryID in EntriesIDs:
+            SaveImagePNG(self.filepath, EntryID)
         
         # Redraw
         for area in context.screen.areas:
@@ -5370,6 +5377,7 @@ class Hd2ToolPanelSettings(PropertyGroup):
     ForceSearchAll        : BoolProperty(name="Force Search All Files", description="Searches for all IDs in every file instead of ending early")
     UnloadPatches         : BoolProperty(name="Unload Previous Patches", description="Unload Previous Patches when bulk loading")
 
+    AutoSaveMeshMaterials : BoolProperty(name="Autosave Mesh Materials", description="Save unsaved material entries applied to meshes when the mesh is saved", default = True)
     SaveNonSDKMaterials   : BoolProperty(name="Save Non-SDK Materials", description="Toggle if non-SDK materials should be autosaved when saving a mesh", default = False)
     PatchBaseArchiveOnly  : BoolProperty(name="Patch Base Archive Only", description="When enabled, it will allow patched to only be created if the base archive is selected. This is helpful for new users.", default = True)
     LegacyWeightNames     : BoolProperty(name="Legacy Weight Names", description="Brings back the old naming system for vertex groups using the X_Y schema", default = True)
@@ -5510,6 +5518,7 @@ class HellDivers2ToolsPanel(Panel):
             row.prop(scene.Hd2ToolPanelSettings, "AutoLods")
             row = mainbox.row(); row.separator(); row.label(text="Other Options"); box = row.box(); row = box.grid_flow(columns=1)
             row.prop(scene.Hd2ToolPanelSettings, "SaveNonSDKMaterials")
+            row.prop(scene.Hd2ToolPanelSettings, "AutoSaveMeshMaterials")
             row.prop(scene.Hd2ToolPanelSettings, "PatchBaseArchiveOnly")
             #row.prop(scene.Hd2ToolPanelSettings, "LegacyWeightNames")
 
@@ -5851,17 +5860,12 @@ class WM_MT_button_context(Menu):
               row.operator("helldiver2.archive_mesh_batchsave", icon='FILE_BLEND', text=f"Save {NumSelected} Meshes")
         elif AreAllTextures:
             row.operator("helldiver2.texture_saveblendimage", icon='FILE_BLEND', text=SaveTextureName).object_id = FileIDStr
-            if SingleEntry:
-                row.separator()
-                row.operator("helldiver2.texture_savefromdds", icon='FILE_IMAGE', text="Import DDS Texture").object_id = str(Entry.FileID)
-                row.operator("helldiver2.texture_savefrompng", icon='FILE_IMAGE', text="Import PNG Texture").object_id = str(Entry.FileID)
-                row.separator()
-                row.operator("helldiver2.texture_export", icon='OUTLINER_OB_IMAGE', text="Export DDS Texture").object_id = str(Entry.FileID)
-                row.operator("helldiver2.texture_export_png", icon='OUTLINER_OB_IMAGE', text="Export PNG Texture").object_id = str(Entry.FileID)
-            else:
-                row.separator()
-                row.operator("helldiver2.texture_batchexport", icon='OUTLINER_OB_IMAGE', text=f"Export {NumSelected} DDS Textures").object_id = FileIDStr
-                row.operator("helldiver2.texture_batchexport_png", icon='OUTLINER_OB_IMAGE', text=f"Export {NumSelected} PNG Textures").object_id = FileIDStr
+            row.separator()
+            row.operator("helldiver2.texture_savefromdds", icon='FILE_IMAGE', text=f"Import {NumSelected} DDS Textures").object_id = FileIDStr
+            row.operator("helldiver2.texture_savefrompng", icon='FILE_IMAGE', text=f"Import {NumSelected} PNG Textures").object_id = FileIDStr
+            row.separator()
+            row.operator("helldiver2.texture_batchexport", icon='OUTLINER_OB_IMAGE', text=f"Export {NumSelected} DDS Textures").object_id = FileIDStr
+            row.operator("helldiver2.texture_batchexport_png", icon='OUTLINER_OB_IMAGE', text=f"Export {NumSelected} PNG Textures").object_id = FileIDStr
         elif AreAllMaterials:
             row.operator("helldiver2.material_save", icon='FILE_BLEND', text=SaveMaterialName).object_id = FileIDStr
             if SingleEntry:
