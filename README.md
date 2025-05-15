@@ -1,9 +1,6 @@
 # Helldivers 2 SDK: Community Edition
 A Blender addon facilitating the modding of textures, meshes and materials contained within Helldivers 2 archives.
 
-### DEPRECATED
-This project is not recieving support from the original developers but a community version was made and is recieving consistant updates, that can be found [here](https://github.com/Boxofbiscuits97/HD2SDK-CommunityEdition)
-
 ## DISCLAIMER
 > [!CAUTION]
 > Helldivers 2 is a multiplayer game with anti-cheat measures. While the client-side cosmetic mods that this tool is capable of producing are unlikely to trigger those measures (and has yet to do so in over 40 hours of personal testing), modding of any sort is done entirely at the risk of the end-user and neither ToastedShoes, Kboy, Irastris, GitHub, Nexus Mods, or any other entity can be held responsible for damages that may result from utilizing this tool and/or mods produced with it. <ins>**You have been warned!**</ins>
