@@ -5563,7 +5563,7 @@ class HellDivers2ToolsPanel(Panel):
                 col.operator("helldiver2.bulk_load", icon= 'IMPORT', text="Bulk Load")
                 col.operator("helldiver2.search_by_entry", icon= 'VIEWZOOM')
                 #row = box.grid_flow(columns=1)
-                row.operator("helldiver2.meshfixtool", icon='MODIFIER')
+                #row.operator("helldiver2.meshfixtool", icon='MODIFIER')
                 search = mainbox.row()
                 search.label(text=Global_searchpath)
                 search.operator("helldiver2.change_searchpath", icon='FILEBROWSER')
