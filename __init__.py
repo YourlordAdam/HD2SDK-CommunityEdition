@@ -126,6 +126,19 @@ TextureTypeLookup = {
         "Emission", 
         "Base Color/Metallic"
     ),
+        "armorlut": (
+        "Decal", 
+        "", 
+        "Pattern LUT", 
+        "Normal", 
+        "", 
+        "", 
+        "Pattern Mask", 
+        "ID Mask Array", 
+        "", 
+        "Primary LUT", 
+        "",
+    ),
     "alphaclip": (
         "Normal/AO/Roughness",
         "Alpha Mask",
@@ -157,6 +170,7 @@ Global_Materials = (
         ("original", "Original", "The original template used for all mods uploaded to Nexus prior to the addon's public release, which is bloated with additional unnecessary textures. Sourced from a terminid"),
         ("basic", "Basic", "A basic material with a color, normal, and PBR map. Sourced from a trash bag prop"),
         ("emissive", "Emissive", "A basic material with a color, normal, and emission map. Sourced from a vending machine"),
+        ("armorlut", "Armor LUT", "An advanced material using multiple mask textures and LUTs to texture the mesh only advanced users should be using this. Sourced from the base game material on Armors"),
     )
 
 Global_MaterialParentIDs = {
@@ -166,6 +180,7 @@ Global_MaterialParentIDs = {
     15356477064658408677 : "basic",
     15235712479575174153 : "emissive",
     17265463703140804126 : "advanced",
+    17720495965476876300 : "armorlut",
     9576304397847579354  : "translucent"
 }
 
