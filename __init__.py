@@ -1371,8 +1371,7 @@ class TocManager():
             return False
         if not Global_TocManager.IsInPatch(Entry):
             Entry = self.AddEntryToPatch(FileID, TypeID)
-        BlenderOpts = bpy.context.scene.Hd2ToolPanelSettings.get_settings_dict()
-        Entry.Save(BlenderOpts=BlenderOpts)
+        Entry.Save()
         return True
 
     def CopyPaste(self, Entry, GenID = False, NewID = None):
@@ -4282,7 +4281,14 @@ class SaveStingrayMeshOperator(Operator):
             self.report({'ERROR'}, f"{bpy.context.selected_objects[0].name} has no HD2 custom properties")
             return{'CANCELLED'}
         model = GetObjectsMeshData()
-        wasSaved = Global_TocManager.Save(int(self.object_id), MeshID)
+        BlenderOpts = bpy.context.scene.Hd2ToolPanelSettings.get_settings_dict()
+        Entry = Global_TocManager.GetEntry(int(ID), MeshID)
+        m = model[ID]
+        for n in range(len(Entry.LoadedData.RawMeshes)):
+            if Entry.LoadedData.RawMeshes[n].MeshInfoIndex == m.MeshInfoIndex:
+                Entry.LoadedData.RawMeshes[n] = m
+                break
+        wasSaved = Entry.Save(BlenderOpts=BlenderOpts)
         if not wasSaved:
                 for object in bpy.data.objects:
                     try:
@@ -4292,12 +4298,6 @@ class SaveStingrayMeshOperator(Operator):
                     except:
                         self.report({'ERROR'}, f"Failed to find object with custom property ID. Object: {object.name}")
                         return{'CANCELLED'}
-        Entry = Global_TocManager.GetEntry(int(ID), MeshID)
-        m = model[ID]
-        for n in range(len(Entry.LoadedData.RawMeshes)):
-            if Entry.LoadedData.RawMeshes[n].MeshInfoIndex == m.MeshInfoIndex:
-                Entry.LoadedData.RawMeshes[n] = m
-                break
         self.report({'INFO'}, f"Saved Mesh Object ID: {self.object_id}")
         return{'FINISHED'}
 
