@@ -170,7 +170,7 @@ Global_Materials = (
         ("original", "Original", "The original template used for all mods uploaded to Nexus prior to the addon's public release, which is bloated with additional unnecessary textures. Sourced from a terminid"),
         ("basic", "Basic", "A basic material with a color, normal, and PBR map. Sourced from a trash bag prop"),
         ("emissive", "Emissive", "A basic material with a color, normal, and emission map. Sourced from a vending machine"),
-        ("armorlut", "Armor LUT", "An advanced material using multiple mask textures and LUTs to texture the mesh only advanced users should be using this"),
+        ("armorlut", "Armor LUT", "An advanced material using multiple mask textures and LUTs to texture the mesh only advanced users should be using this. Sourced from the base game material on Armors"),
     )
 
 Global_MaterialParentIDs = {
