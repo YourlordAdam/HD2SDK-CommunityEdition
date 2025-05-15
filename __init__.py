@@ -4289,7 +4289,9 @@ class SaveStingrayMeshOperator(Operator):
                 Entry.LoadedData.RawMeshes[n] = m
                 break
         wasSaved = Entry.Save(BlenderOpts=BlenderOpts)
-        if not wasSaved:
+        if wasSaved:
+            Global_TocManager.AddEntryToPatch(int(ID), MeshID)
+        else:
                 for object in bpy.data.objects:
                     try:
                         ID = object["Z_ObjectID"]
@@ -4335,7 +4337,9 @@ class BatchSaveStingrayMeshOperator(Operator):
                     Entry.LoadedData.RawMeshes[n] = BlenderMesh
                     break
             wasSaved = Entry.Save(BlenderOpts=BlenderOpts)
-            if not wasSaved:
+            if wasSaved:
+                Global_TocManager.AddEntryToPatch(int(ID), MeshID)
+            else:
                 for object in bpy.data.objects:
                     try:
                         if ID == object["Z_ObjectID"]:
