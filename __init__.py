@@ -4283,6 +4283,7 @@ class SaveStingrayMeshOperator(Operator):
         model = GetObjectsMeshData()
         BlenderOpts = bpy.context.scene.Hd2ToolPanelSettings.get_settings_dict()
         Entry = Global_TocManager.GetEntry(int(ID), MeshID)
+        if not Entry.IsLoaded: Entry.Load(True, False)
         m = model[ID]
         for n in range(len(Entry.LoadedData.RawMeshes)):
             if Entry.LoadedData.RawMeshes[n].MeshInfoIndex == m.MeshInfoIndex:
@@ -4335,6 +4336,7 @@ class BatchSaveStingrayMeshOperator(Operator):
         BlenderOpts = bpy.context.scene.Hd2ToolPanelSettings.get_settings_dict()
         for ID in IDs:
             Entry = Global_TocManager.GetEntry(int(ID), MeshID)
+            if not Entry.IsLoaded: Entry.Load(True, False)
             BlenderMesh = MeshData[ID]
             for n in range(len(Entry.LoadedData.RawMeshes)):
                 if Entry.LoadedData.RawMeshes[n].MeshInfoIndex == BlenderMesh.MeshInfoIndex:
