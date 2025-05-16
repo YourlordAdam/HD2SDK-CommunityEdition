@@ -4601,7 +4601,7 @@ class SaveTextureFromDDSOperator(Operator, ImportHelper):
             return {'CANCELLED'}
         EntriesIDs = IDsFromString(self.object_id)
         for EntryID in EntriesIDs:
-            SaveImageDDS(self.filepath, self.object_id)
+            SaveImageDDS(self.filepath, EntryID)
         
         # Redraw
         for area in context.screen.areas:
