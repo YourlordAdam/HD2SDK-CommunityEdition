@@ -529,8 +529,11 @@ def GetObjectsMeshData():
     data = {}
     for object in objects:
         ID = object["Z_ObjectID"]
-        data[ID] = GetMeshData(object)
-        #data.append(GetMeshData(object))
+        MeshData = GetMeshData(object)
+        try:
+            data[ID][MeshData.MeshInfoIndex] = MeshData
+        except:
+            data[ID] = {MeshData.MeshInfoIndex: MeshData}
     return data
 
 def NameFromMesh(mesh, id, customization_info, bone_names, use_sufix=True):
@@ -4285,10 +4288,9 @@ class SaveStingrayMeshOperator(Operator):
         Entry = Global_TocManager.GetEntry(int(ID), MeshID)
         if not Entry.IsLoaded: Entry.Load(True, False)
         m = model[ID]
-        for n in range(len(Entry.LoadedData.RawMeshes)):
-            if Entry.LoadedData.RawMeshes[n].MeshInfoIndex == m.MeshInfoIndex:
-                Entry.LoadedData.RawMeshes[n] = m
-                break
+        meshes = model[ID]
+        for mesh_index, mesh in meshes.items():
+            Entry.LoadedData.RawMeshes[mesh_index] = mesh
         wasSaved = Entry.Save(BlenderOpts=BlenderOpts)
         if wasSaved:
             try:
@@ -4337,11 +4339,9 @@ class BatchSaveStingrayMeshOperator(Operator):
         for ID in IDs:
             Entry = Global_TocManager.GetEntry(int(ID), MeshID)
             if not Entry.IsLoaded: Entry.Load(True, False)
-            BlenderMesh = MeshData[ID]
-            for n in range(len(Entry.LoadedData.RawMeshes)):
-                if Entry.LoadedData.RawMeshes[n].MeshInfoIndex == BlenderMesh.MeshInfoIndex:
-                    Entry.LoadedData.RawMeshes[n] = BlenderMesh
-                    break
+            MeshList = MeshData[ID]
+            for mesh_index, mesh in MeshList.items():
+                Entry.LoadedData.RawMeshes[mesh_index] = mesh
             wasSaved = Entry.Save(BlenderOpts=BlenderOpts)
             if wasSaved:
                 try:
