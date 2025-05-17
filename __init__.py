@@ -4285,14 +4285,14 @@ class SaveStingrayMeshOperator(Operator):
             if not Global_TocManager.IsInPatch(Entry):
                 Entry = Global_TocManager.AddEntryToPatch(int(ID), MeshID)
         else:
-                for object in bpy.data.objects:
-                    try:
-                        ID = object["Z_ObjectID"]
-                        self.report({'ERROR'}, f"Archive for entry being saved is not loaded. Object: {object.name} ID: {ID}")
-                        return{'CANCELLED'}
-                    except:
-                        self.report({'ERROR'}, f"Failed to find object with custom property ID. Object: {object.name}")
-                        return{'CANCELLED'}
+            for object in bpy.data.objects:
+                try:
+                    ID = object["Z_ObjectID"]
+                    self.report({'ERROR'}, f"Archive for entry being saved is not loaded. Object: {object.name} ID: {ID}")
+                    return{'CANCELLED'}
+                except:
+                    self.report({'ERROR'}, f"Failed to find object with custom property ID. Object: {object.name}")
+                    return{'CANCELLED'}
         self.report({'INFO'}, f"Saved Mesh Object ID: {self.object_id}")
         return{'FINISHED'}
 
