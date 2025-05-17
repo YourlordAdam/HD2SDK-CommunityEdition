@@ -3868,26 +3868,22 @@ class ExportPatchAsZipOperator(Operator, ExportHelper):
             return {'CANCELLED'}
         
         filepath = self.properties.filepath
-        exportpath = filepath.replace(".zip", "")
+        outputFilename = filepath.replace(".zip", "")
         exportname = filepath.split(Global_backslash)[-1]
         
         patchName = Global_TocManager.ActivePatch.Name
-        patchFile = Global_TocManager.ActivePatch.Name
-        tempDirectory = bpy.app.tempdir + patchName
-        patchPath = Global_gamepath + patchFile
+        tempPatchFolder = bpy.app.tempdir + "patchExport\\"
+        tempPatchFile = f"{tempPatchFolder}\{patchName}"
+        PrettyPrint(f"Exporting in temp folder: {tempPatchFolder}")
 
-        if not os.path.exists(tempDirectory):
-            os.makedirs(tempDirectory)
-        if not os.path.exists(patchPath):
-            self.report({'ERROR'}, "No Patch Has Been Written Yet")
-            return {'CANCELLED'}
-        file = patchPath
-        shutil.copyfile(file, f"{tempDirectory}\{patchFile}")
-        file = patchPath + ".gpu_resources"
-        shutil.copyfile(file, f"{tempDirectory}\{patchFile}.gpu_resources")
-        file = patchPath + ".stream"
-        shutil.copyfile(file, f"{tempDirectory}\{patchFile}.stream")
-        shutil.make_archive(exportpath, 'zip', tempDirectory)
+        if not os.path.exists(tempPatchFolder):
+            os.makedirs(tempPatchFolder)
+        Global_TocManager.ActivePatch.ToFile(tempPatchFile)
+        shutil.make_archive(outputFilename, 'zip', tempPatchFolder)
+        for file in os.listdir(tempPatchFolder):
+            path = f"{tempPatchFolder}\{file}"
+            os.remove(path)
+        os.removedirs(tempPatchFolder)
 
         if os.path.exists(filepath):
             self.report({'INFO'}, f"{patchName} Exported Successfully As {exportname}")
