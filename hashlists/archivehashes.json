@@ -437,16 +437,17 @@
     },
 
     "Scope": {
-        "0e6452d74d3a9dd3": "Liberator, Tenderizer, Adjudicator, Scythe & Sickle",
-        "6f605198a099fcf2": "Liberator Concussive, Slugger, Crossbow, Dominator, Halt, MG-43, Scorcher & Purifier",
-        "0601a2f91ec178a9": "Knight, Defender, Pummeler, Punisher, Cookout, Breaker & Blitzer",
-        "45730e588f30a508": "Laser Cannon, Quasar Cannon, Recoiless Launcher & Autocannon",
-        "ad393286210eef73": "Breaker Incendiary, Reprimand, Plasma Punisher & Grenade Launcher",
-        "6657e3ccf2960f28": "Liberator Carbine, Stalwart, HMG, Breaker Spray & Pray",
-        "7356dd3333111570": "Liberator Penetrator, Diligence & R-6 Deadeye",
-        "fe0fbe8486d53767": "Redeemer, Grenade Pistol & Dagger",
-        "ea6967f8565a2d76": "AMR, Counter Sniper & Eruptor",
-        "2d821486db99d8cb": "PLAS-39 Accelerator"
+        "0e6452d74d3a9dd3": "2x Tube Red Dot",
+        "6f605198a099fcf2": "1.5x Tube Red Dot",
+        "0601a2f91ec178a9": "Reflex Sight",
+        "45730e588f30a508": "2x Support Scope",
+        "ad393286210eef73": "Holographic Sight",
+        "6657e3ccf2960f28": "Reflex Sight MK.2",
+        "7356dd3333111570": "4x Combat Scope",
+        "fe0fbe8486d53767": "Pistol Reflex Sight",
+        "ea6967f8565a2d76": "10x Sniper Scope",
+        "2d821486db99d8cb": "PLAS-39 Accelerator Scope",
+        "686c085d91781491": "Iron Sights"
     },
 
     "Attachment": {
