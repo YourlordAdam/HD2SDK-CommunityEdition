@@ -4282,7 +4282,7 @@ class SaveStingrayMeshOperator(Operator):
         wasSaved = Entry.Save(BlenderOpts=BlenderOpts)
         if wasSaved:
             if not Global_TocManager.IsInPatch(Entry):
-                Entry = self.AddEntryToPatch(int(ID), MeshID)
+                Entry = Global_TocManager.AddEntryToPatch(int(ID), MeshID)
         else:
                 for object in bpy.data.objects:
                     try:
@@ -4330,7 +4330,7 @@ class BatchSaveStingrayMeshOperator(Operator):
             wasSaved = Entry.Save(BlenderOpts=BlenderOpts)
             if wasSaved:
                 if not Global_TocManager.IsInPatch(Entry):
-                    Entry = self.AddEntryToPatch(int(ID), MeshID)
+                    Entry = Global_TocManager.AddEntryToPatch(int(ID), MeshID)
             else:
                 for object in bpy.data.objects:
                     try:
