@@ -3819,7 +3819,8 @@ class PatchArchiveOperator(Operator):
         
         #bpy.ops.wm.save_as_mainfile(filepath=)
         
-        SaveUnsavedEntries(self)
+        if bpy.context.scene.Hd2ToolPanelSettings.SaveUnsavedOnWrite:
+            SaveUnsavedEntries(self)
         Global_TocManager.PatchActiveArchive()
         self.report({'INFO'}, f"Patch Written")
         return{'FINISHED'}
@@ -5415,6 +5416,7 @@ class Hd2ToolPanelSettings(PropertyGroup):
 
     AutoSaveMeshMaterials : BoolProperty(name="Autosave Mesh Materials", description="Save unsaved material entries applied to meshes when the mesh is saved", default = True)
     SaveNonSDKMaterials   : BoolProperty(name="Save Non-SDK Materials", description="Toggle if non-SDK materials should be autosaved when saving a mesh", default = False)
+    SaveUnsavedOnWrite    : BoolProperty(name="Save Unsaved entries on Write Patch", description="Save all entries that are unsaved when writing a patch.", default = True)
     PatchBaseArchiveOnly  : BoolProperty(name="Patch Base Archive Only", description="When enabled, it will allow patched to only be created if the base archive is selected. This is helpful for new users.", default = True)
     LegacyWeightNames     : BoolProperty(name="Legacy Weight Names", description="Brings back the old naming system for vertex groups using the X_Y schema", default = True)
     
@@ -5563,6 +5565,7 @@ class HellDivers2ToolsPanel(Panel):
             row.prop(scene.Hd2ToolPanelSettings, "AutoLods")
             row = mainbox.row(); row.separator(); row.label(text="Other Options"); box = row.box(); row = box.grid_flow(columns=1)
             row.prop(scene.Hd2ToolPanelSettings, "SaveNonSDKMaterials")
+            row.prop(scene.Hd2ToolPanelSettings, "SaveUnsavedOnWrite")
             row.prop(scene.Hd2ToolPanelSettings, "AutoSaveMeshMaterials")
             row.prop(scene.Hd2ToolPanelSettings, "PatchBaseArchiveOnly")
             #row.prop(scene.Hd2ToolPanelSettings, "LegacyWeightNames")
