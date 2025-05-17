@@ -5886,10 +5886,9 @@ class WM_MT_button_context(Menu):
             #row.operator("helldiver2.archive_particle_import", icon='IMPORT', text=ImportParticleName).object_id = FileIDStr
         # Draw export buttons
         row.separator()
-        if SingleEntry:
-            props = row.operator("helldiver2.archive_object_dump_import", icon='PACKAGE', text=ImportDumpObjectName)
-            props.object_id     = FileIDStr
-            props.object_typeid = TypeIDStr
+        props = row.operator("helldiver2.archive_object_dump_import", icon='PACKAGE', text=ImportDumpObjectName)
+        props.object_id     = FileIDStr
+        props.object_typeid = TypeIDStr
         props = row.operator("helldiver2.archive_object_dump_export", icon='PACKAGE', text=DumpObjectName)
         props.object_id     = FileIDStr
         props.object_typeid = TypeIDStr
