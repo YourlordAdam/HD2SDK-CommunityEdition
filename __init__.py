@@ -1880,23 +1880,10 @@ def GenerateMaterialTextures(Entry):
         if input_socket.is_linked:
             for link in input_socket.links:
                 image = link.from_node.image
-                tempdir = tempfile.gettempdir()
-                extension = str(image.file_format).lower()
-                if (extension == "dds" or extension == "") and not os.path.exists(image.filepath):
-                    raise Exception(f"Selected texture: {image.name} is a DDS image and its filepath cannot be found. Please manually apply any DDS textures to the patch after saving the material by right clicking on the texture entry and Importing the DDS file.")
-                path = f"{tempdir}\\{image.name.split('.')[0]}.{extension}"
-                oldPath = image.filepath
-                if not os.path.exists(image.filepath):
-                    PrettyPrint(f"Saving image at path: {path} This might destroy color data.", "warn")
-                    try:
-                        image.save(filepath=path)
-                        filepaths.append(path)
-                    except Exception as e:
-                        PrettyPrint(f"Failed to save image at path. {e}", "error")
-                        PrettyPrint(f"Setting image path to old path: {oldPath}")
-                        filepaths.append(oldPath)
-                else:
-                    filepaths.append(oldPath)
+                if image.packed_file:
+                    raise Exception(f"Image: {image.name} is packed. Please unpack your image.")
+                path = bpy.path.abspath(image.filepath)
+                filepaths.append(path)
 
                 # enforce proper colorspace for abnormal stingray textures
                 if "Normal" in input_socket.name or "Color/Emission Mask" in input_socket.name:
@@ -4295,7 +4282,7 @@ class SaveStingrayMeshOperator(Operator):
         wasSaved = Entry.Save(BlenderOpts=BlenderOpts)
         if wasSaved:
             if not Global_TocManager.IsInPatch(Entry):
-                Entry = self.AddEntryToPatch(FileID, TypeID)
+                Entry = self.AddEntryToPatch(int(ID), MeshID)
         else:
                 for object in bpy.data.objects:
                     try:
@@ -4343,7 +4330,7 @@ class BatchSaveStingrayMeshOperator(Operator):
             wasSaved = Entry.Save(BlenderOpts=BlenderOpts)
             if wasSaved:
                 if not Global_TocManager.IsInPatch(Entry):
-                    Entry = self.AddEntryToPatch(FileID, TypeID)
+                    Entry = self.AddEntryToPatch(int(ID), MeshID)
             else:
                 for object in bpy.data.objects:
                     try:
