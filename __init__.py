@@ -3350,7 +3350,7 @@ class StingrayMeshFile:
                 if len(mesh.VertexBoneIndices) > NumBoneIndices: NumBoneIndices = len(mesh.VertexBoneIndices)
             if BlenderOpts:    
                 if BlenderOpts.get("Force2UVs"):
-                    NumUVs = 2
+                    NumUVs = max(2, NumUVs)
                 if IsSkinned and NumBoneIndices > 1 and BlenderOpts.get("Force1Group"):
                     NumBoneIndices = 1
 
@@ -4286,6 +4286,9 @@ class SaveStingrayMeshOperator(Operator):
         model = GetObjectsMeshData()
         BlenderOpts = bpy.context.scene.Hd2ToolPanelSettings.get_settings_dict()
         Entry = Global_TocManager.GetEntry(int(ID), MeshID)
+        if Entry is None:
+            self.report({'WARNING'},
+                f"Archive for entry being saved is not loaded. Could not find custom property object at ID: {ID}")
         if not Entry.IsLoaded: Entry.Load(True, False)
         m = model[ID]
         meshes = model[ID]
@@ -4335,6 +4338,9 @@ class BatchSaveStingrayMeshOperator(Operator):
         BlenderOpts = bpy.context.scene.Hd2ToolPanelSettings.get_settings_dict()
         for ID in IDs:
             Entry = Global_TocManager.GetEntry(int(ID), MeshID)
+            if Entry is None:
+                self.report({'WARNING'},
+                    f"Archive for entry being saved is not loaded. Could not find custom property object at ID: {ID}")
             if not Entry.IsLoaded: Entry.Load(True, False)
             MeshList = MeshData[ID]
             for mesh_index, mesh in MeshList.items():
