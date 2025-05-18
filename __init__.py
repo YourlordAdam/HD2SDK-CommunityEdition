@@ -4184,8 +4184,8 @@ class ImportDumpOperator(Operator, ImportHelper):
     object_typeid: StringProperty(options={"HIDDEN"})
 
     def execute(self, context):
-        if Global_TocManager.ActivePatch == None:
-            raise Exception("No patch exists, please create one first")
+        if PatchesNotLoaded(self):
+            return {'CANCELLED'}
 
         Entries = EntriesFromStrings(self.object_id, self.object_typeid)
         for Entry in Entries:
@@ -5886,6 +5886,7 @@ class WM_MT_button_context(Menu):
             #row.operator("helldiver2.archive_particle_import", icon='IMPORT', text=ImportParticleName).object_id = FileIDStr
         # Draw export buttons
         row.separator()
+
         props = row.operator("helldiver2.archive_object_dump_import", icon='PACKAGE', text=ImportDumpObjectName)
         props.object_id     = FileIDStr
         props.object_typeid = TypeIDStr
