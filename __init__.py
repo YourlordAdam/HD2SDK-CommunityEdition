@@ -317,21 +317,6 @@ def GetDisplayData():
                     DisplayTocEntries.append([Entry, True])
     return [DisplayTocEntries, DisplayTocTypes]
 
-
-def ApplyAllTransforms(self, FileID):
-    bpy.ops.object.select_all(action='DESELECT')
-    PrettyPrint(f"Applying transforms to {FileID}")
-    for obj in bpy.context.scene.objects:
-        try:
-            id = int(obj["Z_ObjectID"])
-            if FileID == id:
-                obj.select_set(True)
-                bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
-                obj.rotation_mode = 'QUATERNION'
-                obj.select_set(False)
-        except:
-            id = None
-
 def SaveUnsavedEntries(self):
     for Entry in Global_TocManager.ActivePatch.TocEntries:
                 if not Entry.IsModified:
@@ -747,24 +732,6 @@ def GetArchiveNameFromID(EntryID):
             return hash[1]
     return ""
 
-def GetVertexGroupsFromID(EntryID, InfoIndex):
-    for archive in Global_TocManager.LoadedArchives:
-        for entry in archive.TocEntries:
-            for vertexObjects in entry.VertexGroups:
-                if vertexObjects[0] == EntryID and vertexObjects[1] == InfoIndex:
-                    PrettyPrint(f"Found Vertex Groups {vertexObjects[2]}")
-                    return vertexObjects[2]
-    return None
-
-def GetTransformsFromID(EntryID, InfoIndex):
-    for archive in Global_TocManager.LoadedArchives:
-        for entry in archive.TocEntries:
-            for transformObjects in entry.Transforms:
-                if transformObjects[0] == EntryID and transformObjects[1] == InfoIndex:
-                    PrettyPrint(f"Found Transforms {transformObjects[2]}")
-                    return transformObjects[2]
-    return None
-
 def GetArchiveIDFromName(Name):
     for hash in Global_ArchiveHashes:
         if hash[1] == Name:
@@ -944,8 +911,7 @@ class TocEntry:
         self.IsSelected = False
         self.MaterialTemplate = None # for determining tuple to use for labeling textures in the material editor
         self.DEV_DrawIndex = -1
-        self.VertexGroups = []
-        self.Transforms = []
+
     # -- Serialize TocEntry -- #
     def Serialize(self, TocFile: MemoryStream, Index=0):
         self.FileID             = TocFile.uint64(self.FileID)
@@ -1025,32 +991,7 @@ class TocEntry:
         if callback != None:
             self.LoadedData = callback(self.FileID, self.TocData, self.GpuData, self.StreamData, Reload, MakeBlendObject)
             if self.LoadedData == None: raise Exception("Archive Entry Load Failed")
-            self.IsLoaded   = True
-            if self.TypeID == MeshID and not self.IsModified:
-                for object in bpy.data.objects:
-                    try:
-                        objectID = object["Z_ObjectID"]
-                        infoIndex = object["MeshInfoIndex"]
-                        if objectID == str(self.FileID):
-                            PrettyPrint(f"Writing Vertex Groups for {object.name}")
-                            vertexNames = []
-                            for group in object.vertex_groups:
-                                vertexNames.append(group.name)
-                            newGroups = [objectID, infoIndex, vertexNames]
-                            if newGroups not in self.VertexGroups:
-                                self.VertexGroups.append(newGroups)
-                            PrettyPrint(self.VertexGroups)
-                            PrettyPrint(f"Writing Transforms for {object.name}")
-                            transforms = []
-                            transforms.append(object.location)
-                            transforms.append(object.rotation_euler)
-                            transforms.append(object.scale)
-                            objectTransforms = [objectID, infoIndex, transforms]
-                            if objectTransforms not in self.Transforms:
-                                self.Transforms.append(objectTransforms)
-                            PrettyPrint(self.Transforms)
-                    except:
-                        PrettyPrint(f"Object: {object.name} has No HD2 Properties")
+            self.IsLoaded = True
 
     # -- Write Data -- #
     def Save(self, **kwargs):
@@ -1368,7 +1309,6 @@ class TocManager():
         if Entry != None: Entry.Load(Reload)
 
     def Save(self, FileID, TypeID):
-        #ApplyAllTransforms(self, FileID)
         Entry = self.GetEntry(FileID, TypeID)
         if Entry == None:
             PrettyPrint(f"Failed to save entry {FileID}")
@@ -3450,10 +3390,6 @@ def IncorrectVertexGroupNaming(self):
         except:
             self.report({'ERROR'}, f"Couldn't find HD2 Properties in {obj.name}")
             return True
-        groups = GetVertexGroupsFromID(ID, InfoIndex)
-        if groups == None or len(groups) == 0:
-            self.report({'WARNING'}, f"No Prior Loaded Vertex Groups Found, This May be Correct")
-            return False
         if len(obj.vertex_groups) <= 0:
             self.report({'ERROR'}, f"No Vertex Groups Found for Object: {obj.name}")
             return True
@@ -3463,9 +3399,6 @@ def IncorrectVertexGroupNaming(self):
         if incorrectGroups > 0:
             self.report({'ERROR'}, f"Found {incorrectGroups} Incorrect Vertex Group Name Scheming for Object: {obj.name}")
             return True
-        if len(groups) != len(obj.vertex_groups):
-            self.report({'WARNING'}, f"Object: {obj.name} has a different number of vertex groups than expected")
-            return False
     return False
 
 def ObjectHasModifiers(self):
@@ -3479,32 +3412,6 @@ def ObjectHasShapeKeys(self):
     for obj in bpy.context.selected_objects:
         if hasattr(obj.data.shape_keys, 'key_blocks'):
             self.report({'ERROR'}, f"Object: {obj.name} has {len(obj.data.shape_keys.key_blocks)} unapplied shape keys")
-            return True
-    return False
-
-def AllTransformsApplied(self):
-    for obj in bpy.context.selected_objects:
-        try:
-            ID = obj["Z_ObjectID"]
-            InfoIndex = obj["MeshInfoIndex"]
-        except:
-            self.report({'ERROR'}, f"Couldn't find HD2 Properties in {obj.name}")
-            return True
-        transforms = GetTransformsFromID(ID, InfoIndex)
-        if transforms != None and obj.location == transforms[0] and obj.rotation_euler == transforms[1] and obj.scale == transforms[2]:
-            PrettyPrint(f"Found Correct Transforms for Object: {obj.name}")
-            return False
-        else:
-            if transforms == None: 
-                PrettyPrint(f"Failed to find any Cashed Transforms for Object: {obj.name} ID: {ID}", "WARN")
-                return False
-            if obj.location != transforms[0]:
-                PrettyPrint(f"Object Location: {obj.location} Expected Location: {transforms[0]}")
-            if obj.rotation_euler != transforms[1]:
-                PrettyPrint(f"Object Rotation: {obj.rotation_euler} Expected Rotation: {transforms[1]}")
-            if obj.scale != transforms[2]:
-                PrettyPrint(f"Object Scale: {obj.scale} Expected Scale: {transforms[2]}")
-            self.report({'ERROR'}, f"Object: {obj.name} has mismatched transforms. See Console")
             return True
     return False
 
