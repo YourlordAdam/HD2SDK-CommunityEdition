@@ -3340,8 +3340,8 @@ class StingrayMeshFile:
                 if len(mesh.VertexUVs)   > NumUVs: NumUVs = len(mesh.VertexUVs)
                 if len(mesh.VertexBoneIndices) > NumBoneIndices: NumBoneIndices = len(mesh.VertexBoneIndices)
             if BlenderOpts:    
-                if BlenderOpts.get("Force2UVs"):
-                    NumUVs = max(2, NumUVs)
+                if BlenderOpts.get("Force3UVs"):
+                    NumUVs = max(3, NumUVs)
                 if IsSkinned and NumBoneIndices > 1 and BlenderOpts.get("Force1Group"):
                     NumBoneIndices = 1
 
@@ -5435,7 +5435,7 @@ class Hd2ToolPanelSettings(PropertyGroup):
     ImportCulling    : BoolProperty(name="Import Culling Bounds", description = "Import Culling Bodies", default = False)
     ImportStatic     : BoolProperty(name="Import Static Meshes", description = "Import Static Meshes", default = False)
     MakeCollections  : BoolProperty(name="Make Collections", description = "Make new collection when importing meshes", default = False)
-    Force2UVs        : BoolProperty(name="Force 2 UV Sets", description = "Force at least 2 UV sets, some materials require this", default = True)
+    Force3UVs        : BoolProperty(name="Force 3 UV Sets", description = "Force at least 3 UV sets, some materials require this", default = True)
     Force1Group      : BoolProperty(name="Force 1 Group", description = "Force mesh to only have 1 vertex group", default = True)
     AutoLods         : BoolProperty(name="Auto LODs", description = "Automatically generate LOD entries based on LOD0, does not actually reduce the quality of the mesh", default = True)
     RemoveGoreMeshes : BoolProperty(name="Remove Gore Meshes", description = "Automatically delete all of the verticies with the gore material when loading a model", default = False)
@@ -5459,7 +5459,7 @@ class Hd2ToolPanelSettings(PropertyGroup):
         dict = {}
         dict["MenuExpanded"] = self.MenuExpanded
         dict["ShowExtras"] = self.ShowExtras
-        dict["Force2UVs"] = self.Force2UVs
+        dict["Force3UVs"] = self.Force3UVs
         dict["Force1Group"] = self.Force1Group
         dict["AutoLods"] = self.AutoLods
         return dict
@@ -5595,7 +5595,7 @@ class HellDivers2ToolsPanel(Panel):
             row.prop(scene.Hd2ToolPanelSettings, "ImportStatic")
             row.prop(scene.Hd2ToolPanelSettings, "RemoveGoreMeshes")
             row = mainbox.row(); row.separator(); row.label(text="Export Options"); box = row.box(); row = box.grid_flow(columns=1)
-            row.prop(scene.Hd2ToolPanelSettings, "Force2UVs")
+            row.prop(scene.Hd2ToolPanelSettings, "Force3UVs")
             row.prop(scene.Hd2ToolPanelSettings, "Force1Group")
             row.prop(scene.Hd2ToolPanelSettings, "AutoLods")
             row = mainbox.row(); row.separator(); row.label(text="Other Options"); box = row.box(); row = box.grid_flow(columns=1)
