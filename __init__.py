@@ -2763,6 +2763,9 @@ class RawMeshClass:
             self.VertexUVs.append([[0,0] for n in range(numVertices)])
         for idx in range(numBoneIndices):
             self.VertexBoneIndices.append([[0,0,0,0] for n in range(numVertices)])
+
+class BoneIndexException(Exception):
+    pass
             
 class SerializeFunctions:
     
@@ -2794,7 +2797,7 @@ class SerializeFunctions:
         try:
              mesh.VertexBoneIndices[component.Index][vidx] = component.SerializeComponent(gpu, mesh.VertexBoneIndices[component.Index][vidx])
         except:
-            raise Exception(f"Vertex bone index out of range. Component index: {component.Index} vidx: {vidx}")
+            raise BoneIndexException(f"Vertex bone index out of range. Component index: {component.Index} vidx: {vidx}")
     
     def SerializeBoneWeightComponent(gpu, mesh, component, vidx):
         if component.Index > 0: # TODO: add support for this (check archive 9102938b4b2aef9d)
@@ -3338,7 +3341,7 @@ class StingrayMeshFile:
                 if len(mesh.VertexBoneIndices) > NumBoneIndices: NumBoneIndices = len(mesh.VertexBoneIndices)
             if BlenderOpts:    
                 if BlenderOpts.get("Force2UVs"):
-                    NumUVs = 2
+                    NumUVs = max(2, NumUVs)
                 if IsSkinned and NumBoneIndices > 1 and BlenderOpts.get("Force1Group"):
                     NumBoneIndices = 1
 
@@ -4271,24 +4274,39 @@ class SaveStingrayMeshOperator(Operator):
         model = GetObjectsMeshData()
         BlenderOpts = bpy.context.scene.Hd2ToolPanelSettings.get_settings_dict()
         Entry = Global_TocManager.GetEntry(int(ID), MeshID)
+        if Entry is None:
+            self.report({'ERROR'},
+                f"Archive for entry being saved is not loaded. Could not find custom property object at ID: {ID}")
+            return{'CANCELLED'}
         if not Entry.IsLoaded: Entry.Load(True, False)
         m = model[ID]
         meshes = model[ID]
         for mesh_index, mesh in meshes.items():
-            Entry.LoadedData.RawMeshes[mesh_index] = mesh
+            try:
+                Entry.LoadedData.RawMeshes[mesh_index] = mesh
+            except IndexError:
+                self.report({'ERROR'}, f"MeshInfoIndex for {bpy.context.selected_objects[0].name} exceeds the number of meshes")
+                return{'CANCELLED'}
+        for mesh_index, mesh in meshes.items():
+            try:
+                if Entry.LoadedData.RawMeshes[mesh_index].DEV_BoneInfoIndex == -1 and bpy.context.selected_objects[0][
+                    'BoneInfoIndex'] > -1:
+                    self.report({'ERROR'},
+                                f"Attempting to overwrite static mesh with {bpy.context.selected_objects[0].name}"
+                                f", which has bones. Check your MeshInfoIndex is correct.")
+                    return{'CANCELLED'}
+                Entry.LoadedData.RawMeshes[mesh_index] = mesh
+            except IndexError:
+                self.report({'ERROR'},
+                            f"MeshInfoIndex for {bpy.context.selected_objects[0].name} exceeds the number of meshes")
+                return{'CANCELLED'}
         wasSaved = Entry.Save(BlenderOpts=BlenderOpts)
         if wasSaved:
             if not Global_TocManager.IsInPatch(Entry):
                 Entry = Global_TocManager.AddEntryToPatch(int(ID), MeshID)
         else:
-            for object in bpy.data.objects:
-                try:
-                    ID = object["Z_ObjectID"]
-                    self.report({'ERROR'}, f"Archive for entry being saved is not loaded. Object: {object.name} ID: {ID}")
-                    return{'CANCELLED'}
-                except:
-                    self.report({'ERROR'}, f"Failed to find object with custom property ID. Object: {object.name}")
-                    return{'CANCELLED'}
+            self.report({"ERROR"}, f"Failed to save mesh {bpy.context.selected_objects[0].name}.")
+            return{'CANCELLED'}
         self.report({'INFO'}, f"Saved Mesh Object ID: {self.object_id}")
         return{'FINISHED'}
 
@@ -4300,6 +4318,7 @@ class BatchSaveStingrayMeshOperator(Operator):
 
     def execute(self, context):
         start = time.time()
+        errors = False
         if MeshNotValidToSave(self):
             return{'CANCELLED'}
 
@@ -4313,34 +4332,54 @@ class BatchSaveStingrayMeshOperator(Operator):
                 ID = object["Z_ObjectID"]
                 if ID not in IDs:
                     IDs.append(ID)
-            except:
+            except KeyError:
                 self.report({'ERROR'}, f"{object.name} has no HD2 custom properties")
                 return{'CANCELLED'}
+        objects_by_id = {}
+        for obj in objects:
+            try:
+                objects_by_id[obj["Z_ObjectID"]][obj["MeshInfoIndex"]] = obj
+            except KeyError:
+                objects_by_id[obj["Z_ObjectID"]] = {obj["MeshInfoIndex"]: obj}
         MeshData = GetObjectsMeshData()
         BlenderOpts = bpy.context.scene.Hd2ToolPanelSettings.get_settings_dict()
+        num_meshes = len(objects)
         for ID in IDs:
             Entry = Global_TocManager.GetEntry(int(ID), MeshID)
+            if Entry is None:
+                self.report({'ERROR'},
+                    f"Archive for entry being saved is not loaded. Could not find custom property object at ID: {ID}")
+                errors = True
+                num_meshes -= len(MeshData[ID])
+                continue
             if not Entry.IsLoaded: Entry.Load(True, False)
             MeshList = MeshData[ID]
             for mesh_index, mesh in MeshList.items():
-                Entry.LoadedData.RawMeshes[mesh_index] = mesh
+                try:
+                    if Entry.LoadedData.RawMeshes[mesh_index].DEV_BoneInfoIndex == -1 and objects_by_id[ID][mesh_index]['BoneInfoIndex'] > -1:
+                        self.report({'ERROR'}, f"Attempting to overwrite static mesh with {objects_by_id[ID][mesh_index].name}"
+                                               f", which has bones. Check your MeshInfoIndex is correct.")
+                        num_meshes -= 1
+                        errors = True
+                        continue
+                    Entry.LoadedData.RawMeshes[mesh_index] = mesh
+                except IndexError:
+                    self.report({'ERROR'}, f"MeshInfoIndex of {mesh_index} for {objects_by_id[ID][mesh_index].name} exceeds the number of meshes")
+                    errors = True
+                    num_meshes -= 1
             wasSaved = Entry.Save(BlenderOpts=BlenderOpts)
             if wasSaved:
                 if not Global_TocManager.IsInPatch(Entry):
                     Entry = Global_TocManager.AddEntryToPatch(int(ID), MeshID)
             else:
-                for object in bpy.data.objects:
-                    try:
-                        if ID == object["Z_ObjectID"]:
-                            self.report({'ERROR'}, f"Archive for entry being saved is not loaded. Object: {object.name}")
-                            return{'CANCELLED'}
-                    except:
-                        PrettyPrint(f"Couldn't find Object: {object.name} at ID: {ID}")
-                self.report({'ERROR'}, f"Archive for entry being saved is not loaded. Could not find custom property object at ID: {ID}")
-                return{'CANCELLED'}
+                self.report({"ERROR"}, f"Failed to save mesh with ID {ID}.")
+                num_meshes -= len(MeshData[ID])
+                continue
         print("Saving mesh materials")
         SaveMeshMaterials(objects)
-        self.report({'INFO'}, f"Saved {len(objects)} Meshes")
+        self.report({'INFO'}, f"Saved {num_meshes}/{len(objects)} selected Meshes")
+        if errors:
+            self.report({'ERROR'}, f"Errors occurred while saving meshes. Click here to view.")
         PrettyPrint(f"Time to save meshes: {time.time()-start}")
         return{'FINISHED'}
 
