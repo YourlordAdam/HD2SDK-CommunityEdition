@@ -17,6 +17,8 @@ from pathlib import Path
 import configparser
 import requests
 import json
+import struct
+import concurrent.futures
 
 #import pyautogui 
 
@@ -1026,6 +1028,47 @@ class TocFileType:
         self.unk3     = TocFile.uint32(self.unk3)
         return self
 
+
+class SearchToc:
+    def __init__(self):
+        self.magic = self.numTypes = self.numFiles = 0
+        self.TocEntries = {}
+        self.Path = ""
+        self.Name = ""
+        self.LocalName = ""
+
+    def HasEntry(self, file_id, type_id):
+        try:
+            return file_id in self.TocEntries[type_id]
+        except KeyError:
+            return False
+
+    def FromFile(self, path):
+        self.UpdatePath(path)
+        bin_data = b""
+        with open(path, 'r+b') as f:
+            bin_data = f.read()
+        self.magic = struct.unpack("<I", bin_data[0:4])[0]
+        if self.magic != 4026531857: return False
+
+        self.numTypes, self.numFiles = struct.unpack("<II", bin_data[4:12])
+
+        file_id = 0
+        type_id = 0
+        offset = 72 + (self.numTypes << 5)
+        for _ in range(self.numFiles):
+            file_id, type_id = struct.unpack_from("<QQ", bin_data, offset=offset)
+            try:
+                self.TocEntries[type_id].append(file_id)
+            except KeyError:
+                self.TocEntries[type_id] = [file_id]
+            offset += 80
+        return True
+
+    def UpdatePath(self, path):
+        self.Path = path
+        self.Name = Path(path).name
+
 class StreamToc:
     def __init__(self):
         self.magic      = self.numTypes = self.numFiles = self.unknown = 0
@@ -1225,13 +1268,19 @@ class TocManager():
 
         # Get search archives
         if len(self.SearchArchives) == 0:
+            futures = []
+            tocs = []
+            executor = concurrent.futures.ThreadPoolExecutor()
             for root, dirs, files in os.walk(Path(path).parent):
                 for name in files:
                     if Path(name).suffix == "":
-                        search_toc = StreamToc()
-                        success = search_toc.FromFile(os.path.join(root, name), False)
-                        if success:
-                            self.SearchArchives.append(search_toc)
+                        search_toc = SearchToc()
+                        tocs.append(search_toc)
+                        futures.append(executor.submit(search_toc.FromFile, os.path.join(root, name)))
+            for index, future in enumerate(futures):
+                if future.result():
+                    self.SearchArchives.append(tocs[index])
+            executor.shutdown()
 
         return toc
     
@@ -1299,8 +1348,7 @@ class TocManager():
         # Check All Search Archives
         if SearchAll:
             for Archive in self.SearchArchives:
-                Entry = Archive.GetEntry(FileID, TypeID)
-                if Entry != None:
+                if Archive.HasEntry(FileID, TypeID):
                     return self.LoadArchive(Archive.Path, False).GetEntry(FileID, TypeID)
         return None
 
