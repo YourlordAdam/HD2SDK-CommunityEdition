@@ -1031,7 +1031,6 @@ class TocFileType:
 
 class SearchToc:
     def __init__(self):
-        self.magic = self.numTypes = self.numFiles = 0
         self.TocEntries = {}
         self.Path = ""
         self.Name = ""
