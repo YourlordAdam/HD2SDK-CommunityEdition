@@ -5107,6 +5107,8 @@ class MeshFixOperator(Operator, ImportHelper):
     
     use_filter_folder = True
     def execute(self, context):   
+        if ArchivesNotLoaded(self):
+            return {'CANCELLED'}
         path = self.directory
         output = RepatchMeshes(self, path)
         if output == {'CANCELLED'}: return {'CANCELLED'}
@@ -5145,7 +5147,7 @@ def RepatchMeshes(self, path):
                 PrettyPrint(f"Skipping {entry.FileID} as it is not a mesh entry")
                 continue
             PrettyPrint(f"Repatching {entry.FileID}")
-            TocManager.LoadArchiveByEntry(entry)
+            Global_TocManager.LoadArchiveByEntry(entry)
             settings.AutoLods = True
             settings.ImportStatic = False
             numMeshesRepatched += 1
