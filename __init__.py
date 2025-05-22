@@ -1034,7 +1034,6 @@ class SearchToc:
         self.TocEntries = {}
         self.Path = ""
         self.Name = ""
-        self.LocalName = ""
 
     def HasEntry(self, file_id, type_id):
         try:
