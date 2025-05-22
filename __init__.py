@@ -1282,6 +1282,9 @@ class TocManager():
 
         return toc
     
+    def LoadArchiveByEntry(self, entry: TocEntry):
+        self.GetEntry(entry.FileID, entry.TypeID, SearchAll=True, IgnorePatch=True)
+    
     def ArchiveNotEmpty(self, toc):
         hasMaterials = False
         hasTextures = False
@@ -5130,12 +5133,6 @@ def RepatchMeshes(self, path):
     if len(patchPaths) == 0:
         self.report({'ERROR'}, f"No patch files were found in selected path")
         return{'ERROR'}
-    
-    if len(Global_TocManager.LoadedArchives) < len(Global_ArchiveHashes) - 10:
-        for hash in Global_ArchiveHashes:
-            path = f"{Global_gamepath}{hash[0]}"
-            if os.path.exists(path):
-                Global_TocManager.LoadArchive(path)
 
     errors = []
     for path in patchPaths:
@@ -5148,6 +5145,7 @@ def RepatchMeshes(self, path):
                 PrettyPrint(f"Skipping {entry.FileID} as it is not a mesh entry")
                 continue
             PrettyPrint(f"Repatching {entry.FileID}")
+            TocManager.LoadArchiveByEntry(entry)
             settings.AutoLods = True
             settings.ImportStatic = False
             numMeshesRepatched += 1
