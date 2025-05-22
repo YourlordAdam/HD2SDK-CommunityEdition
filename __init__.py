@@ -1031,11 +1031,9 @@ class TocFileType:
 
 class SearchToc:
     def __init__(self):
-        self.magic = self.numTypes = self.numFiles = 0
         self.TocEntries = {}
         self.Path = ""
         self.Name = ""
-        self.LocalName = ""
 
     def HasEntry(self, file_id, type_id):
         try:
@@ -1046,17 +1044,17 @@ class SearchToc:
     def FromFile(self, path):
         self.UpdatePath(path)
         bin_data = b""
-        with open(path, 'r+b') as f:
-            bin_data = f.read()
-        self.magic = struct.unpack("<I", bin_data[0:4])[0]
-        if self.magic != 4026531857: return False
+        file = open(path, 'r+b')
+        bin_data = file.read(12)
+        magic, numTypes, numFiles = struct.unpack("<III", bin_data)
+        if magic != 4026531857:
+            file.close()
+            return False
 
-        self.numTypes, self.numFiles = struct.unpack("<II", bin_data[4:12])
-
-        file_id = 0
-        type_id = 0
-        offset = 72 + (self.numTypes << 5)
-        for _ in range(self.numFiles):
+        offset = 60 + (numTypes << 5)
+        bin_data = file.read(offset + 80 * numFiles)
+        file.close()
+        for _ in range(numFiles):
             file_id, type_id = struct.unpack_from("<QQ", bin_data, offset=offset)
             try:
                 self.TocEntries[type_id].append(file_id)
