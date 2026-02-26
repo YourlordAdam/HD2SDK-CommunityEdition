@@ -1611,20 +1611,43 @@ def LoadStingrayTexture(ID, TocData, GpuData, StreamData, Reload, MakeBlendObjec
 
     if MakeBlendObject and not (exists and not Reload):
         tempdir = tempfile.gettempdir()
-        dds_path = f"{tempdir}/{ID}.dds"
+        dds_filename = f"{ID}.dds"
+        dds_path = f"{tempdir}/{dds_filename}"
         png_path = f"{tempdir}/{ID}.png"
 
         with open(dds_path, 'w+b') as f:
             f.write(dds)
         
-        subprocess.run([Global_texconvpath, "-y", "-o", tempdir, "-ft", "png", "-f", "R8G8B8A8_UNORM", "-sepalpha", "-alpha", dds_path], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
-
+        # Для Linux - сначала переходим в директорию
+        if platform.system() == "Windows":
+            cmd = [Global_texconvpath, "-y", "-o", tempdir, "-ft", "png", "-f", "R8G8B8A8_UNORM", "-sepalpha", "-alpha", dds_path]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+        else:
+            print(f"[HD2SDK:CE] Linux detected, changing to temp directory")
+            # Переходим в /tmp и используем только имя файла
+            bash_cmd = f"cd '{tempdir}' && '{Global_texconvpath}' -y -o . -ft png -f R8G8B8A8_UNORM -sepalpha '{dds_filename}'"
+            print(f"[HD2SDK:CE] Running: {bash_cmd}")
+            result = subprocess.run(['bash', '-c', bash_cmd], capture_output=True, text=True)
+        
+        print(f"[HD2SDK:CE] Return code: {result.returncode}")
+        if result.stdout:
+            print(f"[HD2SDK:CE] STDOUT: {result.stdout}")
+        if result.stderr:
+            print(f"[HD2SDK:CE] STDERR: {result.stderr}")
+        
+        if result.returncode != 0:
+            debug_copy = f"/tmp/debug_{ID}.dds"
+            import shutil
+            shutil.copy2(dds_path, debug_copy)
+            raise Exception(f"Failed to convert texture {ID} to PNG")
+        
         if os.path.isfile(png_path):
+            print(f"[HD2SDK:CE] PNG created successfully: {png_path}")
             image = bpy.data.images.load(png_path)
             image.name = str(ID)
             image.pack()
         else:
-            raise Exception(f"Failed to convert texture {ID} to PNG, or DDS failed to export")
+            raise Exception(f"PNG file not created: {png_path}")
     
     return StingrayTex
 
@@ -3147,7 +3170,44 @@ def SaveImagePNG(filepath, object_id):
             tempdir = tempfile.gettempdir()
             PrettyPrint(filepath)
             PrettyPrint(StingrayTex.Format)
-            subprocess.run([Global_texconvpath, "-y", "-o", tempdir, "-ft", "dds", "-dx10", "-f", StingrayTex.Format, "-sepalpha", "-alpha", filepath], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+            
+            # Получаем имя файла без пути
+            filename = os.path.basename(filepath)
+            basename = os.path.splitext(filename)[0]
+            dds_filename = f"{basename}.dds"
+            dds_path = f"{tempdir}/{dds_filename}"
+            
+            # Linux-friendly вызов
+            if platform.system() == "Windows":
+                # Windows версия
+                cmd = [Global_texconvpath, "-y", "-o", tempdir, "-ft", "dds", "-dx10", "-f", StingrayTex.Format, "-sepalpha", "-alpha", filepath]
+                subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+            else:
+                # Linux версия - переходим в директорию и используем только имя файла
+                print(f"[HD2SDK:CE] Linux detected in SaveImagePNG, changing to source directory")
+                source_dir = os.path.dirname(filepath)
+                bash_cmd = f"cd '{source_dir}' && '{Global_texconvpath}' -y -o '{tempdir}' -ft dds -dx10 -f {StingrayTex.Format} -sepalpha '{filename}'"
+                print(f"[HD2SDK:CE] Running: {bash_cmd}")
+                result = subprocess.run(['bash', '-c', bash_cmd], capture_output=True, text=True)
+                
+                if result.returncode != 0:
+                    print(f"[HD2SDK:CE] texconv failed with code {result.returncode}")
+                    print(f"[HD2SDK:CE] STDERR: {result.stderr}")
+                    raise Exception(f"Failed to convert to dds texture for: {filepath}")
+            
+            PrettyPrint(dds_path)
+            if not os.path.exists(dds_path):
+                raise Exception(f"Failed to convert to dds texture for: {dds_path}")
+            with open(dds_path, 'r+b') as f:
+                StingrayTex.FromDDS(f.read())
+            Toc = MemoryStream(IOMode="write")
+            Gpu = MemoryStream(IOMode="write")
+            Stream = MemoryStream(IOMode="write")
+            StingrayTex.Serialize(Toc, Gpu, Stream)
+            # add texture to entry
+            Entry.SetData(Toc.Data, Gpu.Data, Stream.Data, False)
+
+            Global_TocManager.Save(int(object_id), TexID)
             fileName = os.path.basename(filepath).replace(".png", ".dds")
             dds_path = f"{tempdir}/{fileName}"
             PrettyPrint(dds_path)
