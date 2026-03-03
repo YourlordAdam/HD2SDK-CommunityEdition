@@ -3728,12 +3728,12 @@ class ImportAllOfTypeOperator(Operator):
                         self.report({'ERROR'},[EntryID, error])
 
             elif DisplayEntry.TypeID == TexID:
-                Prettyprint("tex")
+                PrettyPrint("tex")
                 #operator = bpy.ops.helldiver2.texture_import(object_id=objectid)
                 #ImportTextureOperator.execute(operator, operator)
 
             elif DisplayEntry.TypeID == MaterialID:
-                Prettyprint("mat")
+                PrettyPrint("mat")
                 #operator = bpy.ops.helldiver2.material_import(object_id=objectid)
                 #ImportMaterialOperator.execute(operator, operator)
         return{'FINISHED'}
