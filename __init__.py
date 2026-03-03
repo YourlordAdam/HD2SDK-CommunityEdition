@@ -1598,25 +1598,25 @@ def _texconv(in_path, *, out_dir=".", ft=None, fmt=None, dx10=False, sepalpha=Fa
     else:
         keyWordArgs.update(capture_output=True, text=True)
 
-    PrettyPrint(f" texconv command: {cmd}")
-    PrettyPrint(f" cwd: {cwd}")
-    PrettyPrint(f" platform: {platform.system()}")
+    PrettyPrint(f"texconv command: {cmd}")
+    PrettyPrint(f"cwd: {cwd}")
+    PrettyPrint(f"platform: {platform.system()}")
     
     result = subprocess.run(cmd, **keyWordArgs)
     
-    PrettyPrint(f" return code: {result.returncode}")
+    PrettyPrint(f"return code: {result.returncode}")
     if result.stdout:
-        PrettyPrint(f" STDOUT: {result.stdout}")
+        PrettyPrint(f"STDOUT: {result.stdout}")
     if result.stderr:
-        PrettyPrint(f" STDERR: {result.stderr}")
+        PrettyPrint(f"STDERR: {result.stderr}")
     
     # Linux fallback only if it fails and -alpha was used
     if result.returncode != 0 and alpha and platform.system() == "Linux":
         cmd = [flag for flag in cmd if flag != "-alpha"]
-        PrettyPrint(" Retrying without -alpha (Linux fallback)")
-        PrettyPrint(f" fallback command: {cmd}")
+        PrettyPrint("Retrying without -alpha (Linux fallback)")
+        PrettyPrint(f"fallback command: {cmd}")
         result = subprocess.run(cmd, **keyWordArgs)
-        PrettyPrint(f" fallback return code: {result.returncode}")
+        PrettyPrint(f"fallback return code: {result.returncode}")
     
     return result
 
@@ -1665,9 +1665,9 @@ def LoadStingrayTexture(ID, TocData, GpuData, StreamData, Reload, MakeBlendObjec
         
         PrettyPrint(f" Return code: {result.returncode}")
         if result.stdout:
-            PrettyPrint(f" STDOUT: {result.stdout}")
+            PrettyPrint(f"STDOUT: {result.stdout}")
         if result.stderr:
-            PrettyPrint(f" STDERR: {result.stderr}")
+            PrettyPrint(f"STDERR: {result.stderr}")
         
         if result.returncode != 0:
             debug_copy = f"/tmp/debug_{ID}.dds"
@@ -1676,7 +1676,7 @@ def LoadStingrayTexture(ID, TocData, GpuData, StreamData, Reload, MakeBlendObjec
             raise Exception(f"Failed to convert texture {ID} to PNG")
         
         if os.path.isfile(png_path):
-            PrettyPrint(f" PNG created successfully: {png_path}")
+            PrettyPrint(f"PNG created successfully: {png_path}")
             image = bpy.data.images.load(png_path)
             image.name = str(ID)
             image.pack()
