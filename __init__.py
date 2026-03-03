@@ -3205,7 +3205,6 @@ def SaveImagePNG(filepath, object_id):
             PrettyPrint(filepath)
             PrettyPrint(StingrayTex.Format)
             
-            # Получаем имя файла без пути
             filename = os.path.basename(filepath)
             basename = os.path.splitext(filename)[0]
             dds_filename = f"{basename}.dds"
@@ -3214,21 +3213,6 @@ def SaveImagePNG(filepath, object_id):
             # Linux-friendly
             result = _texconv(filepath, out_dir=tempdir, ft="dds", dx10=True, fmt=StingrayTex.Format, sepalpha=True, alpha=True, cwd=os.path.dirname(filepath)) 
             
-            PrettyPrint(dds_path)
-            if not os.path.exists(dds_path):
-                raise Exception(f"Failed to convert to dds texture for: {dds_path}")
-            with open(dds_path, 'r+b') as f:
-                StingrayTex.FromDDS(f.read())
-            Toc = MemoryStream(IOMode="write")
-            Gpu = MemoryStream(IOMode="write")
-            Stream = MemoryStream(IOMode="write")
-            StingrayTex.Serialize(Toc, Gpu, Stream)
-            # add texture to entry
-            Entry.SetData(Toc.Data, Gpu.Data, Stream.Data, False)
-
-            Global_TocManager.Save(int(object_id), TexID)
-            fileName = os.path.basename(filepath).replace(".png", ".dds")
-            dds_path = f"{tempdir}/{fileName}"
             PrettyPrint(dds_path)
             if not os.path.exists(dds_path):
                 raise Exception(f"Failed to convert to dds texture for: {dds_path}")
