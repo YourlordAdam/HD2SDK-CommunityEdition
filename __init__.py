@@ -1895,7 +1895,7 @@ class ChangeFilepathOperator(Operator, ImportHelper):
         else:
             self.report({'ERROR'}, f"Could not find steamapps folder in filepath: {filepath}")
             return{'CANCELLED'}
-        Global_gamepath = filepath
+        Global_gamepath = filepath.replace('\\', '/')
         Global_gamepathIsValid = True
         UpdateConfig()
         PrettyPrint(f"Changed Game File Path: {Global_gamepath}")
