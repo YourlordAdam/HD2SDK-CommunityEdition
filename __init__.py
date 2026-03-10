@@ -1887,8 +1887,11 @@ class ChangeFilepathOperator(Operator, ImportHelper):
         global Global_gamepathIsValid
         filepath = self.filepath
         steamapps = "steamapps"
+        steamapps_capitalized = "SteamApps"
         if steamapps in filepath:
-            filepath = f"{filepath.partition(steamapps)[0]}steamapps/common/Helldivers 2/data/ "[:-1]
+            filepath = f"{filepath.partition(steamapps)[0]}steamapps/common/Helldivers 2/data/"
+        elif steamapps_capitalized in filepath:
+            filepath = f"{filepath.partition(steamapps_capitalized)[0]}SteamApps/common/Helldivers 2/data/"
         else:
             self.report({'ERROR'}, f"Could not find steamapps folder in filepath: {filepath}")
             return{'CANCELLED'}
