@@ -109,7 +109,10 @@
         "19b5a68e61d7a9d7": "UF-16 Inspector",
         "871290e9d5703851": "UF-50 Bloodhound",
         "91033cfaaad4ad18": "UF-84 Doubt Killer",
-        "0fecb336be1d287b": "UF-84 Doubt Killer"
+        "0fecb336be1d287b": "UF-84 Doubt Killer",
+        "81bf25bbdd4624c1": "CPH-26 Commandant",
+        "e7449208a97fa22e": "CPG-48 Sapper",
+        "07a2056e7a5f313f": "CPR-80 Bulwark"
     },
 
     "Helmet": {
@@ -215,7 +218,10 @@
         "fb025c06b0408e5f": "UF-16 Inspector",
         "15dcd137ebe874ed": "UF-50 Bloodhound",
         "292b09dac80ce1de": "UF-84 Doubt Killer",
-        "88b7d737b6e62cc0": "UF-84 Doubt Killer"
+        "88b7d737b6e62cc0": "UF-84 Doubt Killer",
+        "a67993f7af5594d8": "CPH-26 Commandant",
+        "d4fb7d61ad409841": "CPG-48 Sapper",
+        "51a7562176a8ac19": "CPR-80 Bulwark"
     },
 
     "Cape": {
@@ -292,7 +298,10 @@
         "61f85b8c1bf97b03": "Foe Rent Asunder",
         "fd679c4070acb043": "Mark of the Constrictor",
         "8ca53afa7fb23710": "De-Forester's Sailcloth",
-        "25839eed0400603b": "Against the Tyrant Cloud"
+        "25839eed0400603b": "Against the Tyrant Cloud",
+        "7caea0a631afeb5f": "Dignity of Toil",
+        "1ff9ac94b5d8c7cd": "Crest of the Unsullied",
+        "ab5053cd9f74be7d": "Testament To Attrition"
     },
 
     "Icons": { 
@@ -476,6 +485,7 @@
         "21e90918df69eff7": "G-16 Impact",
         "543ff1ff0bd82b44": "G-23 Stun",
         "ddcea5fdd4071767": "G-31 Arc",
+        "2f1147605182c6ab": "G-48 Giga Grenade",
         "f590569dbbc6fe2d": "G-50 Seeker",
         "2cb3f69ab9bc1297": "G-109 Urchin",
         "dfb81f9917285965": "G-123 Thermite",
@@ -520,7 +530,8 @@
         "0601a2f91ec178a9": "MP-98 Knight",
         "0edad8ddec238bd9": "SMG-32 Reprimand",
         "f230d2d2adcc034a": "SMG-72 Pummeler & SMG-37 Defender",
-        "9494c346e564d15f": "StA-11 SMG"
+        "9494c346e564d15f": "StA-11 SMG",
+        "a275324ae43dfd50": "SMG/FLAM-34 Stoker"
     },
 
     "Shotgun": {
@@ -575,7 +586,7 @@
         "39ddd2e6f131c873": "CQC-20 Breaching Hammer",
         "f3c65eaab75f1fc2": "CQC-30 Stun Baton",
         "f5014993c8402d87": "CQC-42 Machete",
-        "49de16e1343250e4": "Entrenchment Tool"
+        "49de16e1343250e4": "CQC-73 Entrenchment Tool"
     },
 
     "Pistol": {
@@ -591,6 +602,7 @@
         "6ad7cc21015a5f85": "AC-8 Autocannon",
         "2a9fb8f5d0576eae": "ARC-3 Arc Thrower",
         "ea6967f8565a2d76": "APW-1 Anti-Materiel Rifle",
+        "df16f5c644edc2b1": "B/FLAM-80 Cremator",
         "c40e3b3fa79052ec": "CQC-1 One True Flag",
         "eeebc5fd26fe0f40": "CQC-9 Defoliation Tool",
         "de96cd7cc69628bc": "EAT-17 Expendable Anti-Tank",
