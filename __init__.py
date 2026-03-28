@@ -4210,6 +4210,7 @@ def LoadEntryLists():
                         new_item.item_filter_name = new_item.item_name
                 else:
                     new_item.item_filter_name = new_item.item_name
+                new_item.item_filter_name += f",{GetFriendlyNameFromID(Entry.FileID)}"
     if patch:
         for entry_type in patch.TocDict.keys():
             try:
@@ -4234,6 +4235,7 @@ def LoadEntryLists():
                         new_item.item_filter_name = new_item.item_name
                 else:
                     new_item.item_filter_name = new_item.item_name
+                new_item.item_filter_name += f",{GetFriendlyNameFromID(Entry.FileID)}"
     if state_machine_warning:
         PrettyPrint("State machine not loaded for all animations; filtering animations by armature may not work.", "warn")
         
