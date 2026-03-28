@@ -4976,9 +4976,10 @@ class WM_MT_button_context(Menu):
         props = row.operator("helldiver2.archive_object_dump_export", icon='PACKAGE', text=DumpObjectName)
         props.object_id     = FileIDStr
         props.object_typeid = TypeIDStr
-        props = row.operator("helldiver2.archive_object_dump_export", icon='PACKAGE', text=f"{DumpObjectName} (Original)").ignore_patch = True
+        props = row.operator("helldiver2.archive_object_dump_export", icon='PACKAGE', text=f"{DumpObjectName} (Original)")
         props.object_id     = FileIDStr
         props.object_typeid = TypeIDStr
+        props.ignore_patch = True
         # Draw dump import button
         # if AreAllMaterials and SingleEntry: row.operator("helldiver2.archive_object_dump_import", icon="IMPORT", text="Import Raw Dump").object_id = FileIDStr
         # Draw save buttons
@@ -5091,6 +5092,7 @@ class WM_MT_button_context(Menu):
         props = layout.operator("helldiver2.archive_object_dump_export", icon='PACKAGE', text=f"Export {len(selected_items)} Object Dump{'s' if len(selected_items) > 1 else ''} (Original)")
         props.object_id     = FileIDStr
         props.object_typeid = TypeIDStr
+        props.ignore_patch = True
         # Draw dump import button
         # if AreAllMaterials and SingleEntry: layout.operator("helldiver2.archive_object_dump_import", icon="IMPORT", text="Import Raw Dump").object_id = FileIDStr
         # Draw save buttons
