@@ -4430,9 +4430,9 @@ class MY_UL_List(UIList):
                 entry = Global_TocManager.GetEntry(int(item.item_name), int(item.item_type))
                 if entry and entry.MaterialTemplate:
                     type_icon = "NODE_MATERIAL"
-            friendly_name = GetFriendlyNameFromID(int(item.item_name))
+            name = GetFriendlyNameFromID(int(item.item_name)) if bpy.context.scene.Hd2ToolPanelSettings.FriendlyNames else item.item_name
             current_list_index = getattr(context.scene, f"index_{item.item_type}")
-            op = row.operator("helldiver2.archive_entry", icon=type_icon, text=friendly_name, emboss=item.item_selected, depress=item.item_selected)
+            op = row.operator("helldiver2.archive_entry", icon=type_icon, text=name, emboss=item.item_selected, depress=item.item_selected)
             op.list_id = f"list_{item.item_type}" #"active_propname.replace("index", "list").replace("_dummy", "")
             op.list_index = index
             #row.label(text=friendly_name, icon = type_icon, depress=True)
