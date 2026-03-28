@@ -292,8 +292,11 @@ def IDsFromString(file_id_string):
     FileIDs = file_id_string.split(',')
     Entries = []
     for n in range(len(FileIDs)):
-        if FileIDs[n] != "":
-            Entries.append(int(FileIDs[n]))
+        ID = FileIDs[n]
+        if ID.startswith("0x"):
+            ID = hex_to_decimal(ID)
+        if ID != "":
+            Entries.append(int(ID))
     return Entries
 
 def GetDisplayData():
@@ -2052,8 +2055,7 @@ class SearchByEntryIDOperator(Operator, ImportHelper):
                 ID = hex_to_decimal(ID)
             ID = int(ID)
            
-            Archives = SearchByEntryID(ID)
-            
+            Archives = SearchByEntryID([ID])
             if Archives and bpy.context.scene.Hd2ToolPanelSettings.LoadFoundArchives:
                 for Archive in Archives:
                     Global_TocManager.LoadArchive(Archive.Path, True, False)
@@ -2077,19 +2079,16 @@ class SearchByEntryIDInput(Operator):
 
     entry_id: StringProperty(name="Entry ID")
     def execute(self, context):
-            ID = self.entry_id
-            if ID.startswith("0x"):
-                ID = hex_to_decimal(self.entry_id)
+        IDs = IDsFromString(self.entry_id)
+        Archives = SearchByEntryID(IDs, bpy.context.scene.Hd2ToolPanelSettings.IncludeAllInArchives)
+        for Archive in Archives:
+            Global_TocManager.LoadArchive(Archive.Path)
 
-            Archives = SearchByEntryID(int(ID))
-            for Archive in Archives:
-                Global_TocManager.LoadArchive(Archive.Path)
-
-            # Redraw
-            for area in context.screen.areas:
-                if area.type == "VIEW_3D": area.tag_redraw()
-            
-            return{'FINISHED'}
+        # Redraw
+        for area in context.screen.areas:
+            if area.type == "VIEW_3D": area.tag_redraw()
+        
+        return{'FINISHED'}
     
     def invoke(self, context, event):
         if ArchivesNotLoaded(self):
@@ -2100,18 +2099,25 @@ class SearchByEntryIDInput(Operator):
         layout = self.layout
         layout.prop(self, "entry_id")
 
-def SearchByEntryID(ID: int):
+def SearchByEntryID(IDs: list[int], includeAllInArchives=False):
     global Global_TocManager
     archives = []
-    PrettyPrint(f"Searching for ID: {ID}")
     for Archive in Global_TocManager.SearchArchives:
-        if ID in Archive.fileIDs:
-            PrettyPrint(f"Found ID: {ID} in Archive: {Archive.Name}")
-            archives.append(Archive)
-            if bpy.context.scene.Hd2ToolPanelSettings.LoadOnlyFirstFoundArchive:
-                break
-        
-    PrettyPrint(f"Found ID: {ID} in {len(archives)} unique archives")
+        if includeAllInArchives:
+            if set(IDs).issubset(set(Archive.fileIDs)):
+                PrettyPrint(f"Found all IDs: {IDs} in Archive: {Archive.Name}")
+                archives.append(Archive)
+                if bpy.context.scene.Hd2ToolPanelSettings.LoadOnlyFirstFoundArchive:
+                        break
+        else:
+            for ID in IDs:
+                if ID in Archive.fileIDs:
+                    PrettyPrint(f"Found ID: {ID} in Archive: {Archive.Name}")
+                    archives.append(Archive)
+                if bpy.context.scene.Hd2ToolPanelSettings.LoadOnlyFirstFoundArchive:
+                    break
+
+    PrettyPrint(f"Found IDs in {len(archives)} unique archives")
     PrettyPrint(archives)
     return archives
 
@@ -4310,6 +4316,7 @@ class Hd2ToolPanelSettings(PropertyGroup):
     UnloadPatches             : BoolProperty(name="Unload Previous Patches", description="Unload Previous Patches when bulk loading")
     LoadFoundArchives         : BoolProperty(name="Load Found Archives", description="Load the archives found when search by entry ID", default=True)
     LoadOnlyFirstFoundArchive : BoolProperty(name="Load Only First Found Archive", description="Only load the first archive found when searching by entry ID, otherwise all archives with the entry will be loaded", default=False)
+    SearchAllInclusiveOnly    : BoolProperty(name="Search All Inclusive Only", description="When searching for an archive, only show archives that have all entries being searched for", default=False)
 
     AutoSaveUnitMaterials : BoolProperty(name="Autosave Unit Materials", description="Save unsaved material entries applied to meshes when the unit is saved", default = True)
     SaveNonSDKMaterials   : BoolProperty(name="Save Non-SDK Materials", description="Toggle if non-SDK materials should be autosaved when saving a mesh", default = False)
@@ -4661,7 +4668,7 @@ class HellDivers2ToolsPanel(Panel):
                 row.prop(scene.Hd2ToolPanelSettings, "UnloadPatches")
                 row.prop(scene.Hd2ToolPanelSettings, "LoadFoundArchives")
                 row.prop(scene.Hd2ToolPanelSettings, "LoadOnlyFirstFoundArchive")
-                #row.prop(scene.Hd2ToolPanelSettings, "DeleteOnLoadArchive")
+                row.prop(scene.Hd2ToolPanelSettings, "SearchAllInclusiveOnly")
                 row = box.row()
                 row.operator("helldiver2.search_by_entry", icon= 'FILEBROWSER')
                 row.operator("helldiver2.bulk_load", icon= 'IMPORT', text="Bulk Load")
