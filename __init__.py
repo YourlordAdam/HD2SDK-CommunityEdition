@@ -2080,7 +2080,7 @@ class SearchByEntryIDInput(Operator):
     entry_id: StringProperty(name="Entry ID")
     def execute(self, context):
         IDs = IDsFromString(self.entry_id)
-        Archives = SearchByEntryID(IDs, bpy.context.scene.Hd2ToolPanelSettings.IncludeAllInArchives)
+        Archives = SearchByEntryID(IDs, bpy.context.scene.Hd2ToolPanelSettings.SearchAllInclusiveOnly)
         for Archive in Archives:
             Global_TocManager.LoadArchive(Archive.Path)
 
