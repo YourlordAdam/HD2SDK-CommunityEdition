@@ -271,13 +271,13 @@ def UpdateArchiveHashes():
     except requests.HTTPError as err:
         PrettyPrint(f"HTTP error occurred: {err}", "warn")
 
-def EntriesFromStrings(file_id_string, type_id_string):
+def EntriesFromStrings(file_id_string, type_id_string, IgnorePatch=False):
     FileIDs = file_id_string.split(',')
     TypeIDs = type_id_string.split(',')
     Entries = []
     for n in range(len(FileIDs)):
         if FileIDs[n] != "":
-            Entries.append(Global_TocManager.GetEntry(int(FileIDs[n]), int(TypeIDs[n])))
+            Entries.append(Global_TocManager.GetEntry(int(FileIDs[n]), int(TypeIDs[n]), IgnorePatch))
     return Entries
 
 def EntriesFromString(file_id_string, TypeID):
@@ -2550,8 +2550,10 @@ class DumpArchiveObjectOperator(Operator):
 
     object_id: StringProperty(options={"HIDDEN"})
     object_typeid: StringProperty(options={"HIDDEN"})
+    ignore_patch: BoolProperty(default=False, options={"HIDDEN"})
+
     def execute(self, context):
-        Entries = EntriesFromStrings(self.object_id, self.object_typeid)
+        Entries = EntriesFromStrings(self.object_id, self.object_typeid, self.ignore_patch)
         for Entry in Entries:
             if Entry != None:
                 data = Entry.GetData()
@@ -4872,7 +4874,7 @@ class HellDivers2ToolsPanel(Panel):
 class WM_MT_button_context(Menu):
     bl_label = "Entry Context Menu"
 
-    def draw_entry_buttons(row, Entry):
+    def draw_entry_buttons(row, Entry: TocEntry):
         if not Entry.IsSelected:
             Global_TocManager.SelectEntries([Entry])
 
@@ -4972,6 +4974,9 @@ class WM_MT_button_context(Menu):
         props.object_id     = FileIDStr
         props.object_typeid = TypeIDStr
         props = row.operator("helldiver2.archive_object_dump_export", icon='PACKAGE', text=DumpObjectName)
+        props.object_id     = FileIDStr
+        props.object_typeid = TypeIDStr
+        props = row.operator("helldiver2.archive_object_dump_export", icon='PACKAGE', text=f"{DumpObjectName} (Original)").ignore_patch = True
         props.object_id     = FileIDStr
         props.object_typeid = TypeIDStr
         # Draw dump import button
@@ -5081,6 +5086,9 @@ class WM_MT_button_context(Menu):
         props.object_id     = FileIDStr
         props.object_typeid = TypeIDStr
         props = layout.operator("helldiver2.archive_object_dump_export", icon='PACKAGE', text=f"Export {len(selected_items)} Object Dump{'s' if len(selected_items) > 1 else ''}")
+        props.object_id     = FileIDStr
+        props.object_typeid = TypeIDStr
+        props = layout.operator("helldiver2.archive_object_dump_export", icon='PACKAGE', text=f"Export {len(selected_items)} Object Dump{'s' if len(selected_items) > 1 else ''} (Original)")
         props.object_id     = FileIDStr
         props.object_typeid = TypeIDStr
         # Draw dump import button
