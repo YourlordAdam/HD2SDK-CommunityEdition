@@ -2108,6 +2108,8 @@ def SearchByEntryID(ID: int):
         if ID in Archive.fileIDs:
             PrettyPrint(f"Found ID: {ID} in Archive: {Archive.Name}")
             archives.append(Archive)
+            if bpy.context.scene.Hd2ToolPanelSettings.LoadOnlyFirstFoundArchive:
+                break
         
     PrettyPrint(f"Found ID: {ID} in {len(archives)} unique archives")
     PrettyPrint(archives)
@@ -4298,11 +4300,12 @@ class Hd2ToolPanelSettings(PropertyGroup):
     SearchField      : StringProperty(default = "", update=ChangeSearchString)
 
     # Tools
-    EnableTools           : BoolProperty(name="Special Tools", description = "Enable advanced SDK Tools", default = False)
-    UnloadEmptyArchives   : BoolProperty(name="Unload Empty Archives", description="Unload Archives that do not Contain any Textures, Materials, or Meshes", default = True)
-    DeleteOnLoadArchive   : BoolProperty(name="Nuke Files on Archive Load", description="Delete all Textures, Materials, and Meshes in project when selecting a new archive", default = False)
-    UnloadPatches         : BoolProperty(name="Unload Previous Patches", description="Unload Previous Patches when bulk loading")
-    LoadFoundArchives     : BoolProperty(name="Load Found Archives", description="Load the archives found when search by entry ID", default=True)
+    EnableTools               : BoolProperty(name="Special Tools", description = "Enable advanced SDK Tools", default = False)
+    UnloadEmptyArchives       : BoolProperty(name="Unload Empty Archives", description="Unload Archives that do not Contain any Textures, Materials, or Meshes", default = True)
+    DeleteOnLoadArchive       : BoolProperty(name="Nuke Files on Archive Load", description="Delete all Textures, Materials, and Meshes in project when selecting a new archive", default = False)
+    UnloadPatches             : BoolProperty(name="Unload Previous Patches", description="Unload Previous Patches when bulk loading")
+    LoadFoundArchives         : BoolProperty(name="Load Found Archives", description="Load the archives found when search by entry ID", default=True)
+    LoadOnlyFirstFoundArchive : BoolProperty(name="Load Only First Found Archive", description="Only load the first archive found when searching by entry ID, otherwise all archives with the entry will be loaded", default=False)
 
     AutoSaveUnitMaterials : BoolProperty(name="Autosave Unit Materials", description="Save unsaved material entries applied to meshes when the unit is saved", default = True)
     SaveNonSDKMaterials   : BoolProperty(name="Save Non-SDK Materials", description="Toggle if non-SDK materials should be autosaved when saving a mesh", default = False)
@@ -4653,6 +4656,7 @@ class HellDivers2ToolsPanel(Panel):
                 row.prop(scene.Hd2ToolPanelSettings, "UnloadEmptyArchives")
                 row.prop(scene.Hd2ToolPanelSettings, "UnloadPatches")
                 row.prop(scene.Hd2ToolPanelSettings, "LoadFoundArchives")
+                row.prop(scene.Hd2ToolPanelSettings, "LoadOnlyFirstFoundArchive")
                 #row.prop(scene.Hd2ToolPanelSettings, "DeleteOnLoadArchive")
                 row = box.row()
                 row.operator("helldiver2.search_by_entry", icon= 'FILEBROWSER')
