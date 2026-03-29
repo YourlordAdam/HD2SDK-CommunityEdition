@@ -2486,6 +2486,23 @@ class DuplicateEntryOperator(Operator):
                 dup = material.copy()
                 dup.name = context.scene.new_id_entry
                 # set new ID in the shader node of the duplicated material, if it's an SDK material
+                for node in dup.node_tree.nodes:
+                    if node.type == 'GROUP':
+                        nodeName = node.node_tree.name
+                        if "-" in nodeName:
+                            if self.object_id in nodeName.split("-")[1]:
+                                node.node_tree.name = "-".join([nodeName.split("-")[0], context.scene.new_id_entry])
+                            else:
+                                PrettyPrint(f"Failed to find template from group: {nodeName}. Rename failed.", "error")
+                                dup.name = self.object_id
+                                context.scene.new_id_entry = ""
+                                return {'CANCELLED'}
+                        else: # non-SDK material
+                            PrettyPrint(f"Failed to rename material when duplicating: {self.object_id}", "error")
+                            bpy.data.materials.remove(dup)
+                            context.scene.new_id_entry = ""
+                            return {'CANCELLED'}
+                        break
         context.scene.new_id_entry = ""
         return{'FINISHED'}
 
