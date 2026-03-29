@@ -125,11 +125,14 @@ class StingrayMeshFile:
 
         if f.IsReading() and self.MeshInfoOffset == 0:
             if bpy.context.scene.Hd2ToolPanelSettings.SkipMeshImportErrors:
-                PrettyPrint(f"Skipping mesh import due to SkipMeshImportErrors setting.", 'warn')
+                PrettyPrint(f"Skipping mesh import error due to SkipMeshImportErrors setting.", 'warn')
                 return
             raise Exception("Unsupported Mesh Format (No geometry)")
 
         if f.IsReading() and (self.StreamInfoOffset == 0 and self.CompositeRef == 0):
+            if bpy.context.scene.Hd2ToolPanelSettings.SkipMeshImportErrors:
+                PrettyPrint(f"Skipping mesh import error due to SkipMeshImportErrors setting.", 'warn')
+                return
             raise Exception("Unsupported Mesh Format (No buffer stream)")
 
         # Get bones file
@@ -382,6 +385,9 @@ class StingrayMeshFile:
                 self.StreamInfoOffset = 1
                 gpu = Entry.LoadedData.GpuData
             else:
+                if bpy.context.scene.Hd2ToolPanelSettings.SkipMeshImportErrors:
+                    PrettyPrint(f"Composite mesh file {self.CompositeRef} could not be found. Skipping mesh import error due to SkipMeshImportErrors setting.", 'warn')
+                    return
                 raise Exception(f"Composite mesh file {self.CompositeRef} could not be found")
 
         # Materials
@@ -1204,7 +1210,7 @@ class RawMaterialClass:
                 try:
                     self.ShortID = Global_MaterialSlotNames[unit_id][self.MatID][index]
                 except (KeyError, IndexError):
-                    PrettyPrint(f"Unable to find material slot for material {name} with material count {index} for unit {unit_id}, using random material slot name")
+                    PrettyPrint(f"Unable to find material slot for material {name} with material count {index} for unit {unit_id}, using random material slot name", 'warn')
                     self.ShortID = random.randint(1, 0xffffffff)
             except:
                 raise Exception("Material name must be a number")
