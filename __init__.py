@@ -2477,6 +2477,7 @@ class DuplicateEntryOperator(Operator):
         if context.scene.new_id_entry == "":
             self.report({'ERROR'}, "No ID was given")
             return {'CANCELLED'}
+        # somehow duplicate all textures?
         Global_TocManager.DuplicateEntry(int(self.object_id), int(self.object_typeid), int(context.scene.new_id_entry))
         if int(self.object_typeid) == MaterialID:
             material = bpy.data.materials.get(self.object_id)
@@ -2484,6 +2485,7 @@ class DuplicateEntryOperator(Operator):
             if material and not new_material:
                 dup = material.copy()
                 dup.name = context.scene.new_id_entry
+                # set new ID in the shader node of the duplicated material, if it's an SDK material
         context.scene.new_id_entry = ""
         return{'FINISHED'}
 
@@ -2534,6 +2536,21 @@ class RenamePatchEntryOperator(Operator):
             material = bpy.data.materials.get(self.object_id)
             if material:
                 material.name = self.NewFileID
+                for node in material.node_tree.nodes:
+                    if node.type == 'GROUP':
+                        nodeName = node.node_tree.name
+                        if "-" in nodeName:
+                            if self.object_id in nodeName.split("-")[1]:
+                                node.node_tree.name = "-".join([nodeName.split("-")[0], self.NewFileID])
+                            else:
+                                PrettyPrint(f"Failed to find template from group: {nodeName}. Rename failed.", "error")
+                                material.name = self.object_id
+                                return {'CANCELLED'}
+                        else:
+                            PrettyPrint(f"Failed to rename material: {self.object_id}", "error")
+                            material.name = self.object_id
+                            return {'CANCELLED'}
+                        break
 
         # Redraw
         LoadEntryLists()

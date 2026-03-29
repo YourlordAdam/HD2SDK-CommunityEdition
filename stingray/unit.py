@@ -678,7 +678,7 @@ class StingrayMeshFile:
             if HasPositions:  Stream_Info.Components.append(StreamComponentInfo("position", "vec3_float"))
             if HasNormals:    Stream_Info.Components.append(StreamComponentInfo("normal", "unk_normal"))
             for n in range(NumUVs):
-                UVComponent = StreamComponentInfo("uv", "vec2_half")
+                UVComponent = StreamComponentInfo("uv", "vec2_float")
                 UVComponent.Index = n
                 Stream_Info.Components.append(UVComponent)
             if IsSkinned:     Stream_Info.Components.append(StreamComponentInfo("bone_weight", "vec4_half"))
@@ -1096,6 +1096,7 @@ class StreamComponentInfo:
         return "unknown"
     def FormatFromName(self, name):
         if   name == "float":         return 0
+        elif name == "vec2_float":    return 1
         elif name == "vec3_float":    return 2
         elif name == "rgba_r8g8b8a8": return 4
         elif name == "vec4_uint32": return 20 # unconfirmed
@@ -1107,6 +1108,7 @@ class StreamComponentInfo:
         return -1
     def GetSize(self):
         if   self.Format == 0:  return 4
+        elif self.Format == 1:  return 8
         elif self.Format == 2:  return 12
         elif self.Format == 4:  return 4
         elif self.Format == 20: return 16
