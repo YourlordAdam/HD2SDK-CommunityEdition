@@ -2441,6 +2441,11 @@ class RemoveEntryFromPatchOperator(Operator):
         for Entry in Entries:
             Global_TocManager.RemoveEntryFromPatch(Entry.FileID, Entry.TypeID)
         LoadEntryLists()
+
+        # Redraw
+        for area in context.screen.areas:
+            if area.type == "VIEW_3D": area.tag_redraw()
+
         return{'FINISHED'}
 
 class UndoArchiveEntryModOperator(Operator):
@@ -4028,11 +4033,33 @@ def CustomPropertyContext(self, context):
     layout.operator("helldiver2.copy_custom_properties", icon= 'COPYDOWN')
     layout.operator("helldiver2.paste_custom_properties", icon= 'PASTEDOWN')
     layout.separator()
+    
+    FileIDStr = ""
+    TypeIDStr = ""
+    units_in_patch = 0
+    unit_count = 0
+
+    for obj in bpy.context.selected_objects:
+        if obj.get("Z_ObjectID", None) is not None:
+            unit_count += 1
+            if Global_TocManager.ActivePatch != None and Global_TocManager.ActivePatch.GetEntry(obj["Z_ObjectID"], UnitID) != None:
+                units_in_patch += 1
+                FileIDStr += f"{obj['Z_ObjectID']},"
+                TypeIDStr += f"{UnitID},"
+
+    if units_in_patch > 0:
+        props = layout.operator("helldiver2.archive_removefrompatch", icon='X', text=f"Remove {units_in_patch} Units From Patch")
+        props.object_id     = FileIDStr
+        props.object_typeid = TypeIDStr
+        layout.separator()
+
     layout.operator("helldiver2.archive_animation_save", icon='ARMATURE_DATA')
     if bpy.context.object.type == "ARMATURE":
         if bpy.context.object.get("StateMachineID", None) is not None:
             layout.operator("helldiver2.search_animations", text="Show Animations for this Armature", icon='VIEWZOOM').state_machine_id = bpy.context.object.get("StateMachineID")
-    layout.operator("helldiver2.archive_unit_batchsave", icon= 'FILE_BLEND')
+
+    if unit_count > 0:
+        layout.operator("helldiver2.archive_unit_batchsave", icon= 'FILE_BLEND', text=f"Save {unit_count} Units")
     
 def CustomBoneContext(self, context):
     layout = self.layout
@@ -5118,7 +5145,7 @@ class WM_MT_button_context(Menu):
         # Draw import buttons
         # TODO: Add generic import buttons
         layout.separator()
-        if item_type == UnitID:       layout.operator("helldiver2.archive_unit_import", icon='IMPORT', text=f"Import {len(selected_items)} Mesh{'es' if len(selected_items) > 1 else ''}").object_id = FileIDStr
+        if item_type == UnitID:       layout.operator("helldiver2.archive_unit_import", icon='IMPORT', text=f"Import {len(selected_items)} Unit{'s' if len(selected_items) > 1 else ''}").object_id = FileIDStr
         elif item_type == TexID:      layout.operator("helldiver2.texture_import",      icon='IMPORT', text=f"Import {len(selected_items)} Texture{'s' if len(selected_items) > 1 else ''}").object_id = FileIDStr
         elif item_type == MaterialID: layout.operator("helldiver2.material_import",     icon='IMPORT', text=f"Import {len(selected_items)} Material{'s' if len(selected_items) > 1 else ''}").object_id = FileIDStr
         #elif AreAllParticles:
@@ -5144,7 +5171,7 @@ class WM_MT_button_context(Menu):
             if len(selected_items) == 1:
                 layout.operator("helldiver2.archive_unit_save", icon='FILE_BLEND', text="Save Mesh").object_id = list_item.item_name
             else:
-                layout.operator("helldiver2.archive_unit_batchsave", icon='FILE_BLEND', text=f"Save {len(selected_items)} Meshes")
+                layout.operator("helldiver2.archive_unit_batchsave", icon='FILE_BLEND', text=f"Save {len(selected_items)} Units")
         elif item_type == TexID:
             layout.operator("helldiver2.texture_saveblendimage", icon='FILE_BLEND', text=f"Save {len(selected_items)} Blender Texture{'s' if len(selected_items) > 1 else ''}").object_id = FileIDStr
             layout.separator()
