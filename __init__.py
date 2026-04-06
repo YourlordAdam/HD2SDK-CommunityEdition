@@ -1595,7 +1595,7 @@ def BlendImageToStingrayTexture(image, StingrayTex):
     image.filepath_raw = tga_path
     image.save()
 
-    subprocess.run([Global_texconvpath, "-y", "-o", tempdir, "-ft", "dds", "-dx10", "-f", StingrayTex.Format, "-sepalpha", "-alpha", dds_path], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+    subprocess.run([Global_texconvpath, "-y", "-o", tempdir, "-ft", "dds", "-dx10", "-f", StingrayTex.Format, "-sepalpha", "-alpha", "--", dds_path], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
     
     if os.path.isfile(dds_path):
         with open(dds_path, 'r+b') as f:
@@ -1620,7 +1620,7 @@ def LoadStingrayTexture(ID, TocData, GpuData, StreamData, Reload, MakeBlendObjec
         with open(dds_path, 'w+b') as f:
             f.write(dds)
         
-        subprocess.run([Global_texconvpath, "-y", "-o", tempdir, "-ft", "png", "-f", "R8G8B8A8_UNORM", "-sepalpha", "-alpha", dds_path], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+        subprocess.run([Global_texconvpath, "-y", "-o", tempdir, "-ft", "png", "-f", "R8G8B8A8_UNORM", "-sepalpha", "-alpha", "--", dds_path], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
 
         if os.path.isfile(png_path):
             image = bpy.data.images.load(png_path)
@@ -3074,7 +3074,7 @@ class ExportTexturePNGOperator(Operator, ExportHelper):
                         f.write(Entry.LoadedData.ToDDS())
                     else:
                         f.write(Entry.LoadedData.ToDDSArray()[i])
-                subprocess.run([Global_texconvpath, "-y", "-o", directory, "-ft", "png", "-f", "R8G8B8A8_UNORM", "-sepalpha", "-alpha", dds_path])
+                subprocess.run([Global_texconvpath, "-y", "-o", directory, "-ft", "png", "-f", "R8G8B8A8_UNORM", "-sepalpha", "-alpha", "--", dds_path])
                 if os.path.isfile(dds_path):
                     self.report({'INFO'}, f"Saved PNG Texture to: {dds_path}")
                 else:
@@ -3134,7 +3134,7 @@ class BatchExportTexturePNGOperator(Operator):
                 dds_path = f"{tempdir}/{EntryID}.dds"
                 with open(dds_path, 'w+b') as f:
                     f.write(Entry.LoadedData.ToDDS())
-                subprocess.run([Global_texconvpath, "-y", "-o", self.directory, "-ft", "png", "-f", "R8G8B8A8_UNORM", "-alpha", dds_path])
+                subprocess.run([Global_texconvpath, "-y", "-o", self.directory, "-ft", "png", "-f", "R8G8B8A8_UNORM", "-alpha", "--", dds_path])
                 filepath = f"{self.directory}/{EntryID}.png"
                 if os.path.isfile(filepath):
                     exportedfiles += 1
@@ -3199,7 +3199,7 @@ def SaveImagePNG(filepath, object_id):
             tempdir = tempfile.gettempdir()
             PrettyPrint(filepath)
             PrettyPrint(StingrayTex.Format)
-            subprocess.run([Global_texconvpath, "-y", "-o", tempdir, "-ft", "dds", "-dx10", "-f", StingrayTex.Format, "-sepalpha", "-alpha", filepath], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+            subprocess.run([Global_texconvpath, "-y", "-o", tempdir, "-ft", "dds", "-dx10", "-f", StingrayTex.Format, "-sepalpha", "-alpha", "--", filepath], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
             fileName = os.path.basename(filepath).replace(".png", ".dds")
             dds_path = f"{tempdir}/{fileName}"
             PrettyPrint(dds_path)
