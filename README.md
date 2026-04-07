@@ -28,7 +28,9 @@ The developers of the original version of the tool have stated that they are unl
 Download the [latest release build](https://github.com/Boxofbiscuits97/HD2SDK-CommunityEdition/releases) and install it into [Blender 4.0 to 4.3](https://www.blender.org/download/). 
 - Windows is the only officially supported operating system.
 - Linux has also been reported to work via Wine.
-  - To use on linux without wine, extract the latest linux build of [this texconv implementation](https://github.com/matyalatte/Texconv-Custom-DLL) to the `deps` folder in the addon's zip before installing.
+  - To use on linux without wine, extract the v0.4.1 linux build of [this texconv implementation](https://github.com/matyalatte/Texconv-Custom-DLL/releases/tag/v0.4.1) to the `deps` folder in the addon's zip before installing. 
+    - Texconv builds later than v0.4.1 do not work.
+    - This texconv build depends on libpng and libjpeg. Your distro probably already installed them.
 
 ## Usage
 We've taken the time to write a tutorial focused on armor modding which should assist those already moderately familiar with mesh modding and Blender in general. Unfortunately we do not have the means to provide constant support to anyone new to either, but in the event anyone should write a more in-depth tutorial, create a video tutorial, etc, we would be happy to feature it here if it's brought to our attention.
